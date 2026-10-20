@@ -72,13 +72,30 @@ python3 tools/build_submission.py --bot bots/benim_botum
 
 Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
 
+### İlk bot: Banette
+
+`bots/banette/` ilk yarışma botumuz:
+
+- Banette + 2 Kieran + 2 Bloodmoon Ursaluna ex
+- Consensus Banette listesinden `-1 Prism Tower`, `-1 Pokégear 3.0`
+- Patrat korundu; 60 kart, 1 ACE SPEC (Legacy Energy)
+- Kendi `main.py` politikası: Gwynn discard yönetimi, Dhelmise/Banette/
+  Bloodmoon saldırı seçimi, Boss hedefleme
+
+Meta deck listeleri ve 188 replay'lik analiz: [`decks/meta/README.md`](decks/meta/README.md)
+
+```bash
+python3 tools/check_deck.py bots/banette/deck.csv --engine
+python3 tools/build_submission.py --bot bots/banette
+```
+
 ## Yapı
 
 ```
 src/agent/       varsayılan ajan ve politika
 bots/            ekip botları (her biri main.py + deck.csv)
-decks/           ortak deste dosyaları
-tools/           arena, turnuva, gözlem inceleme, paketleme
+decks/           ortak deste dosyaları ve meta listeleri
+tools/           arena, turnuva, replay analizi, deck kontrolü, paketleme
 scripts/         kurulum ve kontrol
 tests/           smoke test
 ```
