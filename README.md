@@ -46,12 +46,39 @@ python3 tools/build_submission.py
 Submission çıktısı `submissions/submission.tar.gz` olur; kökte `main.py`,
 `deck.csv` ve `cg/` bulunur.
 
+## Botlar
+
+Her bot `bots/<bot_adi>/` altında kendi `main.py` ve `deck.csv` dosyasıyla
+durur. Şablon:
+
+```bash
+cp -r bots/_template bots/benim_botum
+# main.py, deck.csv ve meta.json düzenle
+```
+
+```bash
+# iki botu karşılaştır
+python3 tools/arena.py --bot0 bots/benim_botum --bot1 bots/_template --games 50
+
+# BO3
+python3 tools/arena.py --bot0 bots/benim_botum --bot1 bots/_template --games 30 --bo3
+
+# tüm botlarla round-robin turnuva
+python3 tools/tournament.py --games 50
+
+# seçilen botu paketle
+python3 tools/build_submission.py --bot bots/benim_botum
+```
+
+Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
+
 ## Yapı
 
 ```
-src/agent/       ajan ve politika
-decks/           deste dosyaları
-tools/           arena, gözlem inceleme, paketleme
+src/agent/       varsayılan ajan ve politika
+bots/            ekip botları (her biri main.py + deck.csv)
+decks/           ortak deste dosyaları
+tools/           arena, turnuva, gözlem inceleme, paketleme
 scripts/         kurulum ve kontrol
 tests/           smoke test
 ```
