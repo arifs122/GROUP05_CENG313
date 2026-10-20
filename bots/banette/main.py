@@ -607,11 +607,18 @@ def _choose(obs: dict, select: dict, player: int) -> list[int]:
 
 
 def _read_deck() -> list[int]:
-    path = Path(__file__).with_name("deck.csv")
-    cards = [int(line.strip()) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(cards) != 60:
-        raise ValueError(f"{path}: expected 60 cards, found {len(cards)}")
-    return cards
+    candidates = []
+    if "__file__" in globals():
+        candidates.append(Path(__file__).with_name("deck.csv"))
+    candidates.extend([Path("deck.csv"), Path("/kaggle_simulations/agent/deck.csv")])
+    for path in candidates:
+        if not path.is_file():
+            continue
+        cards = [int(line.strip()) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if len(cards) != 60:
+            raise ValueError(f"{path}: expected 60 cards, found {len(cards)}")
+        return cards
+    raise FileNotFoundError("deck.csv not found next to main.py, in cwd, or in /kaggle_simulations/agent")
 
 
 _DECK: list[int] | None = None

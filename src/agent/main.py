@@ -10,7 +10,7 @@ Keep this file small: the actual decision logic lives in ``policy.py``.
 import os
 import sys
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 
 # Locally the engine lives in vendor/; in a submission bundle cg/ sits next
 # to this file.  Kaggle may also expose the bundle at the path below.

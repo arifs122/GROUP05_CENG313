@@ -21,6 +21,21 @@ class BanetteTest(unittest.TestCase):
         self.assertEqual(len(deck), 60)
         self.assertTrue(all(1 <= card_id <= 1431 for card_id in deck))
 
+    def test_kaggle_exec_without_file(self) -> None:
+        """Kaggle executes main.py without defining __file__."""
+        import os
+
+        code = (ROOT / "bots" / "banette" / "main.py").read_text(encoding="utf-8")
+        namespace = {"__name__": "__main__", "__builtins__": __builtins__}
+        old_cwd = os.getcwd()
+        os.chdir(ROOT / "bots" / "banette")
+        try:
+            exec(compile(code, "<kaggle_agent>", "exec"), namespace)  # noqa: S102
+            deck = namespace["agent"]({"select": None})
+            self.assertEqual(len(deck), 60)
+        finally:
+            os.chdir(old_cwd)
+
     def test_short_self_play(self) -> None:
         try:
             from arena import load_bot, play_match
