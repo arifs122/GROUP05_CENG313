@@ -170,6 +170,26 @@ def _hide_sneak_discard(obs: dict, player: int) -> int:
     return sum(1 for card in state.get("discard") or [] if _hide_sneak(card["id"]))
 
 
+def _has_recovery_target(obs: dict, player: int) -> bool:
+    for card in _player_state(obs, player).get("discard") or []:
+        cid = card["id"]
+        data = _card(cid)
+        if cid in (DHELMISE, BLOODMOON, BANETTE, SHUPPET):
+            return True
+        if data is not None and int(data.cardType) in (5, 6):  # Basic / Special Energy
+            return True
+    return False
+
+
+def _field_energy(obs: dict, player: int) -> int:
+    total = 0
+    state = _player_state(obs, player)
+    for pokemon in (state.get("active") or []) + (state.get("bench") or []):
+        if pokemon:
+            total += len(pokemon.get("energies") or [])
+    return total
+
+
 def _hand_supporter(obs: dict, player: int) -> bool:
     state = _player_state(obs, player)
     for card in state.get("hand") or []:
@@ -314,38 +334,65 @@ def _play_score(obs: dict, player: int, card_id: int | None) -> float:
     if card_id == POKEGEAR:
         return 3000 if not _hand_supporter(obs, player) else 800
     if card_id == BOSS:
+        my_active = (_player_state(obs, player).get("active") or [None])[0]
+        if my_active and not (my_active.get("energies") or []):
+            return 100
         targets = _bench_targets(obs, player)
         if not targets:
-            return 1000
+            return 800
         active = _opponent_active(obs, player)
-        can_hit = bool(active and _hide_sneak_discard(obs, player) >= 4)
-        if can_hit and any(int(target.get("hp", 999)) <= 170 for target in targets):
-            return 5000
+        active_energies = len(active.get("energies") or []) if active else 0
+        if active_energies > 0 and any(int(target.get("hp", 999)) <= 170 for target in targets):
+            return 4500
         if any(target.get("id") in KEY_TARGET_BONUS for target in targets):
-            return 3500
-        return 1200
+            return 3000
+        return 800
     if card_id == NIGHT_STRETCHER:
-        return 2500
+        if _has_recovery_target(obs, player):
+            return 900
+        return -1
     if card_id == KIERAN:
-        return 3200
+        my_active = (_player_state(obs, player).get("active") or [None])[0]
+        if my_active and not (my_active.get("energies") or []):
+            return 100
+        active = _opponent_active(obs, player)
+        my_active = (_player_state(obs, player).get("active") or [None])[0]
+        if active and my_active and _prize_value(active["id"]) >= 2 and (my_active.get("energies") or []):
+            return 2500
+        return 700
     if card_id == PRISM_TOWER:
-        return 2500 if not obs["current"].get("stadium") else 800
+        return 2200 if not obs["current"].get("stadium") else 800
     if card_id == NEUTRALIZATION_ZONE:
         active = _opponent_active(obs, player)
         return 6000 if active and _prize_value(active["id"]) >= 2 else 2000
     if card_id == BLOODMOON:
-        return 3000 if bench_count < 5 else 1200
+        return 800 + (800 if _field_energy(obs, player) >= 3 else 0)
     if card_id == LILLIES_CLEFAIRY:
         active = _opponent_active(obs, player)
-        return 2500 if active and _is_dragon(active["id"]) else 1200
+        return 2500 if active and _is_dragon(active["id"]) else 500
+    if card_id == DHELMISE:
+        return 2600
+    if card_id == SHUPPET:
+        return 1900
+    if card_id == DUNSPARCE:
+        return 1700
+    if card_id == POLTCHAGEIST:
+        return 1200
     if card_id == FLUTTER_MANE:
         active = _opponent_active(obs, player)
         data = _card(active["id"]) if active else None
-        return 2000 if data and data.skills else 700
+        return 1500 if data and data.skills else 500
     if card_id == PATRAT:
-        return 1200
+        return 900
     if card_id == AIR_BALLOON:
-        return 1200
+        my_active = (_player_state(obs, player).get("active") or [None])[0]
+        bench_ready = any(
+            (pokemon.get("energies") or []) and pokemon.get("id") in (DHELMISE, BANETTE)
+            for pokemon in _player_state(obs, player).get("bench") or []
+        )
+        if my_active and not (my_active.get("energies") or []) and bench_ready:
+            return 3000
+        return 800
     return 1000
 
 
@@ -358,7 +405,7 @@ def _main_score(obs: dict, player: int, option: dict) -> float:
         if cid == DUDUNSPARCE:
             return 6000 if int(_player_state(obs, player).get("deckCount", 0)) > 5 else 500
         if cid == PRISM_TOWER:
-            return 3500 if len(_player_state(obs, player).get("hand") or []) >= 4 else 800
+            return 1000 if len(_player_state(obs, player).get("hand") or []) >= 6 else -1
         if cid == FLUTTER_MANE:
             return 1800
         if cid == LILLIES_CLEFAIRY:
@@ -390,15 +437,30 @@ def _main_score(obs: dict, player: int, option: dict) -> float:
         elif cid == LEGACY_ENERGY:
             base = 3200
         elif cid == AIR_BALLOON:
-            base = 1500
+            state = _player_state(obs, player)
+            active = (state.get("active") or [None])[0]
+            bench_ready = any(
+                (pokemon.get("energies") or []) and pokemon.get("id") in (DHELMISE, BANETTE)
+                for pokemon in state.get("bench") or []
+            )
+            base = 4000 if active and not (active.get("energies") or []) and bench_ready else 1200
         else:
             base = 1800
-        if target in (DHELMISE, BANETTE, BLOODMOON, LILLIES_CLEFAIRY):
-            base += 400
+        if target in (DHELMISE, BANETTE):
+            base += 600
+        elif target in (BLOODMOON, LILLIES_CLEFAIRY):
+            base += 100
+        state = _player_state(obs, player)
+        active = (state.get("active") or [None])[0]
+        if target is active and active and not (active.get("energies") or []):
+            base += 2500
         return base
     if kind == int(OptionType.RETREAT):
         state = _player_state(obs, player)
         active = (state.get("active") or [None])[0]
+        if active and not (active.get("energies") or []):
+            if any((pokemon.get("energies") or []) for pokemon in state.get("bench") or []):
+                return 1600
         if active and active.get("hp", 0) <= active.get("maxHp", 0) // 2:
             return 1200
         return -1
@@ -416,6 +478,25 @@ def _pick_top(scores: list[tuple[float, int]], min_count: int, max_count: int) -
     count = max(min_count, min(count, max_count, len(scores)))
     selected = [index for _, index in sorted(scores, reverse=True)[:count]]
     return selected
+
+
+def _night_stretcher_score(obs: dict, player: int, card_id: int | None) -> float:
+    if card_id is None:
+        return 0
+    if card_id == DHELMISE:
+        return 100
+    if card_id == BLOODMOON:
+        return 90
+    if card_id == BANETTE:
+        return 70
+    if card_id == SHUPPET:
+        return 60
+    data = _card(card_id)
+    if data is not None and int(data.cardType) in (5, 6):
+        return 80
+    if _hide_sneak(card_id):
+        return 10 if _hide_sneak_discard(obs, player) < 4 else 40
+    return 20
 
 
 def _search_score(card_id: int | None) -> float:
@@ -463,9 +544,9 @@ def _discard_score(obs: dict, player: int, option: dict, effect_id: int | None) 
 
 def _setup_active_score(card_id: int | None) -> float:
     return {
-        SHUPPET: 100, DHELMISE: 95, DUNSPARCE: 85, POLTCHAGEIST: 75,
-        BLOODMOON: 60, LILLIES_CLEFAIRY: 50, FLUTTER_MANE: 40, PATRAT: 30,
-    }.get(card_id, 20)
+        DHELMISE: 120, SHUPPET: 100, DUNSPARCE: 80, POLTCHAGEIST: 60,
+        BLOODMOON: 40, LILLIES_CLEFAIRY: 30, FLUTTER_MANE: 25, PATRAT: 20,
+    }.get(card_id, 10)
 
 
 def _setup_bench_score(card_id: int | None) -> float:
@@ -556,7 +637,16 @@ def _choose(obs: dict, select: dict, player: int) -> list[int]:
         return _pick_top(scores, mini, maxi)
 
     if context in (int(SelectContext.TO_HAND), int(SelectContext.LOOK), int(SelectContext.TO_DECK)):
-        scores = [(_search_score(_option_card(obs, player, option, select)), i) for i, option in enumerate(options)]
+        if effect_id == NIGHT_STRETCHER:
+            scores = [(_night_stretcher_score(obs, player, _option_card(obs, player, option, select)), i) for i, option in enumerate(options)]
+        else:
+            scores = []
+            for i, option in enumerate(options):
+                cid = _option_card(obs, player, option, select)
+                score = _search_score(cid)
+                if _hide_sneak(cid) and _hide_sneak_discard(obs, player) < 4:
+                    score = 5
+                scores.append((score, i))
         return _pick_top(scores, mini, maxi)
 
     if context == int(SelectContext.TO_BENCH):
