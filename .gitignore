@@ -1,0 +1,31 @@
+# Competition assets and generated files
+pokemon/
+vendor/
+data/
+cg/
+*.pdf
+*_Card_Data_*.csv
+*.so
+*.dll
+*.dylib
+
+# Submission bundles, replays and experiment outputs
+submissions/
+build/
+replays/
+results/
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
