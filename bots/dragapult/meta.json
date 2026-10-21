@@ -1,0 +1,5 @@
+{
+  "name": "dragapult_sample_policy",
+  "author": "TransforMew",
+  "notes": "Dragapult ex consensus list with the official rule-based Dragapult pilot (wrapped for robust deck loading). Public competition sample; see wmh/ptcg-abc for the wrapper reference."
+}
