@@ -1,0 +1,5 @@
+{
+  "name": "lucario_mega_hariyama",
+  "author": "TransforMew",
+  "notes": "Mega Lucario ex / Hariyama consensus list with a strong rule-based pilot. It has an optional forward-search hook, but in this build the search call is a no-op fallback; the effective policy is rule-based."
+}
