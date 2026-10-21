@@ -84,6 +84,8 @@ Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
 
 Meta deck listeleri ve 188 replay'lik analiz: [`decks/meta/README.md`](decks/meta/README.md)
 
+Matchup notları ve 3 deck planı: [`decks/meta/matchups.md`](decks/meta/matchups.md)
+
 ```bash
 python3 tools/check_deck.py bots/banette/deck.csv --engine
 python3 tools/build_submission.py --bot bots/banette
