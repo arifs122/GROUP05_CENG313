@@ -76,9 +76,9 @@ Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
 
 `bots/banette/` ilk yarışma botumuz:
 
-- Banette + 2 Kieran + 2 Bloodmoon Ursaluna ex
-- Consensus Banette listesinden `-1 Prism Tower`, `-1 Pokégear 3.0`
-- Patrat korundu; 60 kart, 1 ACE SPEC (Legacy Energy)
+- Banette + 2 Kieran + 2 Bloodmoon Ursaluna ex + Neutralization Zone
+- Consensus Banette listesinden `-1 Prism Tower`, `-1 Pokégear 3.0`, `-1 Legacy Energy`
+- Patrat korundu; 60 kart, 1 ACE SPEC (Neutralization Zone)
 - Kendi `main.py` politikası: Gwynn discard yönetimi, Dhelmise/Banette/
   Bloodmoon saldırı seçimi, Boss hedefleme
 

@@ -38,7 +38,8 @@ Bu klasördeki listeler, 20 Ekim 2026'da Kaggle'daki halka açık replay'lerden
 | Dosya | Açıklama |
 |---|---|
 | `banette.csv` | 57/57 Banette deckinin birebir aynı consensus listesi |
-| `banette_kieran_bloodmoon.csv` | İlk botumuzun listesi: 2 Kieran + 2 Bloodmoon, Patrat korundu |
+| `banette_kieran_bloodmoon.csv` | İlk deneme: 2 Kieran + 2 Bloodmoon, Patrat korundu (Legacy Energy) |
+| `banette_kieran_bloodmoon_neutral.csv` | Final bot: aynı liste + Neutralization Zone (Legacy yerine) |
 | `alakazam.csv` | En sık görülen Alakazam listesi |
 | `dragapult.csv` | En sık görülen Dragapult listesi |
 | `festival_lead.csv` | Grookey/Thwackey/Dipplin + Festival Grounds |
@@ -46,24 +47,28 @@ Bu klasördeki listeler, 20 Ekim 2026'da Kaggle'daki halka açık replay'lerden
 | `slowking_kangaskhan.csv` | Slowking + Mega Kangaskhan listesi |
 | `ceruledge.csv` | Ceruledge ex listesi |
 
-## İlk bot: Banette + Kieran + Bloodmoon
+## İlk bot: Banette + Kieran + Bloodmoon + Neutralization Zone
 
 Consensus Banette listesine göre:
 
 - `-1 Prism Tower`
 - `-1 Pokégear 3.0`
+- `-1 Legacy Energy`
 - `+1 Kieran` (toplam 2)
 - `+1 Bloodmoon Ursaluna ex` (toplam 2)
+- `+1 Neutralization Zone`
 
-Patrat korundu. Liste 60 kart, 1 ACE SPEC (Legacy Energy), engine tarafından
-kabul ediliyor. Amaç: Kangaskhan/Ceruledge'e karşı 2. Bloodmoon + Kieran ile
-daha iyi 2-vuruş planı; Slowking'e karşı Patrat ve daha iyi Boss hedefi.
+Patrat korundu. Liste 60 kart, 1 ACE SPEC (Neutralization Zone), engine
+tarafından kabul ediliyor. Amaç: Kangaskhan/Ceruledge'e karşı 2. Bloodmoon +
+Kieran ile daha iyi 2-vuruş planı; düşük ladder'da çok kalabalık olan
+Mega Abomasnow'un ex saldırılarını Neutralization Zone ile sıfırlamak.
 
-Lokal testlerde (BanettePolicy, 100 maç ilk/second ayrı) bu varyant:
+Lokal testlerde (BanettePolicy):
 
-- İyi matchup'larda (Alakazam/Festival/Dragapult) base'e yakın
-- Kötü matchup'larda (Kangaskhan/Slowking/Ceruledge) base'den daha iyi
-- İlk/second arasında dengeli
+- Mega Abomasnow: %39 → **%57**
+- Mega Kangaskhan: %55 → %57
+- Alakazam/Dragapult/Festival: hafif iyileşme
+- Slowking: %56 → %44 (Neutralization'ın bedeli)
 
 ## Doğrulama
 
