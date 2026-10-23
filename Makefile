@@ -1,4 +1,4 @@
-.PHONY: help setup check arena inspect test tournament tournament-bo3 submission submission-bot clean
+.PHONY: help setup check arena inspect test analyze tournament tournament-bo3 submission submission-bot clean
 
 BOT ?= bots/_template
 
@@ -8,6 +8,7 @@ help:
 	@echo "arena          : 20 games, heuristic vs random"
 	@echo "inspect        : print 15 observations"
 	@echo "test           : run smoke tests"
+	@echo "analyze        : per-matchup win rate + anomaly report (BOT=bots/name)"
 	@echo "tournament     : round-robin, 50 matches per pair"
 	@echo "tournament-bo3 : round-robin, 30 BO3 matches per pair"
 	@echo "submission     : build submissions/submission.tar.gz from src/agent"
@@ -28,6 +29,9 @@ inspect:
 
 test:
 	python3 -m unittest discover -s tests -v
+
+analyze:
+	python3 tools/analyze.py --bot $(BOT) --all --games 100
 
 tournament:
 	python3 tools/tournament.py --games 50

@@ -8,6 +8,7 @@ cg/
 *.so
 *.dll
 *.dylib
+.env
 
 # Submission bundles, replays and experiment outputs
 logs/

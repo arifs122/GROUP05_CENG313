@@ -36,6 +36,9 @@ Yarışma motoru ve kart verisi lisans nedeniyle repoda tutulmaz. Script, verile
 # yerel maç
 python3 tools/arena.py --games 100
 
+# eşleşme başına galibiyet + deterministik anomali raporu
+python3 tools/analyze.py --bot bots/dragapult --all --games 100
+
 # gözlem inceleme
 python3 tools/inspect_obs.py --steps 20
 

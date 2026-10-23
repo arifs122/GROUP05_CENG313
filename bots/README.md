@@ -25,6 +25,10 @@ bots/
       ...
   ```
 
+- `agent`, `main.py` içinde **en son tanımlanan fonksiyon** olmalı. Kaggle
+  doğrulama koşucusu modüldeki son callable'ı çağırıyor; `agent`'tan sonra
+  `reset()` gibi bir fonksiyon tanımlarsanız doğrulama `agent` yerine onu
+  çağırır ve submission `INVALID` olur (`Validation Episode failed`).
 - `deck.csv` tam **60 kart** içermeli (her satırda bir kart ID).
 - Bot klasörüne `cg/`, kart CSV'si veya PDF **konmaz**. Arena `vendor/cg`'yi
   kullanır.
