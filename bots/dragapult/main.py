@@ -897,7 +897,14 @@ def _policy(obs_dict: dict) -> list[int]:
                 net_lillie = my_hand_value - expected_lillie
                 my_hand_count = len(my_state.hand)
                 if my_state.deckCount <= 8:
-                    score = 3000
+                    # Lillie is the anti-deck-out card: it shuffles the hand
+                    # back in before drawing.  With a large hand it refills the
+                    # deck; prioritise it over Boss so a gust cannot consume
+                    # the supporter slot while the deck is empty.
+                    if my_hand_count >= 5 and len(op_state.prize) > 1:
+                        score = 90000
+                    else:
+                        score = 25000
                 elif my_hand_count <= 3 or net_lillie <= -4:
                     score = 45000
                 elif my_hand_count >= 7 and net_lillie >= 3:
@@ -911,7 +918,14 @@ def _policy(obs_dict: dict) -> list[int]:
                 net_judge = my_hand_value - expected_4
                 opp_hand = int(op_state.handCount)
                 my_hand_count = len(my_state.hand)
-                if opp_hand >= 8 and net_judge <= 6:
+                if (my_state.deckCount <= 8 and my_hand_count >= 5
+                        and len(op_state.prize) > 1):
+                    # Deck-safety reset: refill before the draw step.  Still
+                    # leave Boss available when the opponent is on one prize.
+                    score = 70000
+                elif my_state.deckCount <= 8 and my_hand_count >= 4:
+                    score = 30000
+                elif opp_hand >= 8 and net_judge <= 6:
                     score = 55000
                 elif opp_hand >= 6 and net_judge <= 3:
                     score = 45000
