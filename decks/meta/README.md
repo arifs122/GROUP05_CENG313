@@ -1,7 +1,8 @@
 # Meta deck listeleri
 
 Bu klasördeki listeler, 20 Ekim 2026'da Kaggle'daki halka açık replay'lerden
-çıkarıldı.
+çıkarıldı; 24 Ekim 2026'da 82 kendi maçımız + 60 üst-sıra takım replay'i ile
+güncellendi.
 
 ## Kaynak
 
@@ -46,6 +47,16 @@ Bu klasördeki listeler, 20 Ekim 2026'da Kaggle'daki halka açık replay'lerden
 | `mega_kangaskhan.csv` | Mega Kangaskhan listesi |
 | `slowking_kangaskhan.csv` | Slowking + Mega Kangaskhan listesi |
 | `ceruledge.csv` | Ceruledge ex listesi |
+| `dragapult_blaziken.csv` | Blaziken ex / Chi-Yu / Shaymin Dragapult varyantı |
+| `dragapult_top4.csv` | 4 Fire / 4 Psychic / 2 Dark, 4 Poke Pad Dragapult varyantı |
+| `mega_excadrill_top_a.csv` | Genesect / Metagross / Mega Excadrill top varyantı |
+| `mega_excadrill_top_b.csv` | Team Rocket's Transceiver / Gravity Mountain varyantı |
+| `mega_starmie.csv` | Staryu + Mega Starmie ex / Mega Froslass ex |
+| `mega_froslass.csv` | Snorunt + Mega Froslass ex |
+| `teal_mask_ogerpon.csv` | Teal Mask Ogerpon ex / Tera Orb |
+| `munkidori_crustle.csv` | Munkidori + Crustle + Froslass |
+| `crustle_fire.csv` | Dwebble/Crustle + Centiskorch |
+| `ns_zorua.csv` | N's Zorua / N's Zoroark ex / Xerosic / N's Castle |
 
 ## İlk bot: Banette + Kieran + Bloodmoon + Neutralization Zone
 
@@ -70,11 +81,24 @@ Lokal testlerde (BanettePolicy):
 - Alakazam/Dragapult/Festival: hafif iyileşme
 - Slowking: %56 → %44 (Neutralization'ın bedeli)
 
+## 24 Ekim 2026 güncellemesi
+
+- 82 kendi maçımız: Dragapult 101 deck, Alakazam 13, Mega Abomasnow 10,
+  Mega Kangaskhan 9, Mega Lucario 8; ayrıca Mega Starmie, Teal Mask Ogerpon,
+  Munkidori/Crustle, Mega Froslass, N's Zorua gibi yeni archetype'lar.
+- 60 üst-sıra takım replay'i: Dragapult 26, Mega Kangaskhan 23, Hydrapple 18,
+  Mega Excadrill 16, Banette 16, Alakazam 11, Slowking-Kangaskhan 8.
+- Üst-sıra Dragapult pilotları 26/26 **first** seçti.
+- Yeni listeler `tools/build_belief_data.py` ile botun self-contained belief
+  kütüphanesine aktarılır.
+
 ## Doğrulama
 
 ```bash
 python3 tools/check_deck.py decks/meta/banette_kieran_bloodmoon.csv --engine
 python3 tools/check_deck.py bots/banette/deck.csv --engine
+python3 tools/check_deck.py decks/meta/ns_zorua.csv --engine
+python3 tools/build_belief_data.py
 ```
 
 Replay analizi:

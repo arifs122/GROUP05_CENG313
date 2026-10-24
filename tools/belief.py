@@ -180,23 +180,16 @@ class Belief:
         for name, deck in self.deck_library.items():
             counts = Counter(deck)
             logp = math.log(max(self.priors.get(name, 1.0), 1e-9))
-            possible = True
             for cid, seen in self.seen_counts.items():
                 n = counts.get(cid, 0)
-                if seen > n:
-                    possible = False
-                    break
-                # A simple likelihood: seeing a card that is common in this
-                # deck is more likely.  This is intentionally conservative.
-                logp += math.log(max(n, 0.5)) * seen
-            if possible:
-                scores[name] = logp
-        if not scores:
-            self.posterior = {name: 1.0 / max(1, len(self.deck_library)) for name in self.deck_library}
-            return
-        top = max(scores.values())
+                # Do not eliminate every template for one unseen tech card.
+                # A small smoothing mass keeps the posterior usable while
+                # still strongly preferring decks that actually play the card.
+                logp += math.log(max(n, 0.25)) * seen
+            scores[name] = logp
+        top = max(scores.values()) if scores else 0.0
         exp = {name: math.exp(score - top) for name, score in scores.items()}
-        total = sum(exp.values())
+        total = sum(exp.values()) or 1.0
         self.posterior = {name: value / total for name, value in exp.items()}
 
     def top_decks(self, k: int = 3) -> list[tuple[str, float]]:

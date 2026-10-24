@@ -72,6 +72,27 @@ python3 tools/build_submission.py --bot bots/benim_botum
 
 Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
 
+### Belief / gözlem logları
+
+`bots/dragapult` submission sırasında **sadece gözlem** amaçlı, tur başına bir
+`BELIEF {...}` JSON satırı basar. Bu satır politikanın seçtiği aksiyonu
+değiştirmez; Kaggle agent log’larından indirilip analiz edilir.
+
+```bash
+# local testlerde logları kapat
+PTCG_BELIEF_LOG=0 python3 tools/arena.py --bot0 bots/dragapult --bot1 bots/_template --games 30
+
+# logları özetle
+python3 tools/belief_logs.py logs/episode-*-agent-*-logs.json
+
+# replay'lardan yeni deck eklendiyse runtime kütüphanesini yenile
+python3 tools/build_belief_data.py
+```
+
+Log alanları: rakip archetype posterior’u, Boss/Judge/Lillie/Unfair el
+olasılıkları; kendi setup/enerji/Boss draw olasılıkları; phase ve el/deck/prize
+sayıları.
+
 ### İlk bot: Banette
 
 `bots/banette/` ilk yarışma botumuz:

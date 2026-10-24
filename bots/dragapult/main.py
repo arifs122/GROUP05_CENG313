@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import random
 import sys
@@ -17,6 +18,17 @@ try:
     _SEARCH_OK = True
 except Exception:  # noqa: BLE001
     _SEARCH_OK = False
+
+try:
+    from belief_runtime import BeliefObserver
+    _BELIEF_OK = True
+except Exception:  # noqa: BLE001
+    _BELIEF_OK = False
+
+# Observation-only logging.  The observer never changes the action returned by
+# the policy; it writes compact JSON lines to stdout for Kaggle agent logs.
+BELIEF_LOG = os.environ.get("PTCG_BELIEF_LOG", "1") != "0"
+_BELIEF = None
 
 """
 Dragapult ex — Phantom Dive spread + Crushing Hammer disruption.
@@ -106,8 +118,9 @@ Judge = 1213
 Rosa_Encouragement = 1240
 Basic_Dark_Energy = 7
 
-# The ladder data (78 replays) shows top Dragapult pilots choose first.
-GO_FIRST = False
+# 26/26 top-team Dragapult replays (Oct 24 sample) chose first, and local
+# A/B with this list is clearly better going first.
+GO_FIRST = True
 
 # Forward search: 1-ply lookahead over the rule policy's top candidates, then
 # a greedy rollout of the rest of our turn using the same policy.
@@ -118,6 +131,50 @@ SEARCH_NODE_BUDGET = int(os.environ.get("PTCG_SEARCH_NODES", "300"))
 SEARCH_ROLLOUT_MAX = 50
 Basic_Fire_Energy = 2
 Basic_Psychic_Energy = 5
+
+# Coarse "how useful is this card in hand" weights.  Unlike hand_score(), these
+# do not depend on the current board, so they can be used to compare a hand
+# before and after a shuffle-and-draw effect without recursion.
+_HAND_QUALITY = {
+    Dreepy: 8, Drakloak: 6, Dragapult_ex: 12,
+    Fezandipiti_ex: 5, Latias_ex: 4, Budew: 6, Meowth_ex: 5,
+    Munkidori: 4, Dunsparce: 3, Dudunsparce: 5,
+    Rare_Candy: 10, Unfair_Stamp: 7, Buddy_Buddy_Poffin: 6,
+    Night_Stretcher: 4, Crushing_Hammer: 2, Ultra_Ball: 5,
+    Poke_Pad: 5, Lucky_Helmet: 2, Boss_Orders: 8, Crispin: 6,
+    Brock_Scouting: 5, Lillie_Determination: 6, Judge: 4,
+    Rosa_Encouragement: 5, Team_Rocket_Watchtower: 3,
+    Nighttime_Mine: 2, Risky_Ruins: 2,
+    Basic_Dark_Energy: 2, Basic_Fire_Energy: 3, Basic_Psychic_Energy: 3,
+}
+
+
+def _hypergeom_at_least_one(unseen: int, copies: int, draws: int) -> float:
+    """P(at least one of ``copies`` in ``unseen`` appears in ``draws``)."""
+    if copies <= 0 or draws <= 0 or unseen <= 0:
+        return 0.0
+    copies = min(int(copies), int(unseen))
+    draws = min(int(draws), int(unseen))
+    if unseen - copies < draws:
+        return 1.0
+    miss = math.comb(unseen - copies, draws) / math.comb(unseen, draws)
+    return max(0.0, min(1.0, 1.0 - miss))
+
+
+def _hand_quality(cards) -> float:
+    return float(sum(_HAND_QUALITY.get(card.id, 1) for card in cards if card is not None))
+
+
+def _expected_draw_quality(card_counts, draws: int) -> float:
+    total = sum(max(0, int(count)) for count in card_counts.values())
+    if total <= 0:
+        return 0.0
+    average = sum(
+        _HAND_QUALITY.get(card_id, 1) * max(0, int(count))
+        for card_id, count in card_counts.items()
+    ) / total
+    return average * draws
+
 
 UNNECESSARY = -10000000
 
@@ -139,6 +196,8 @@ current_turn_log: list = []
 prize: list[int] = []
 card_counts = defaultdict(int)
 serial_set = set()
+opp_seen_counts = defaultdict(int)
+opp_seen_serials = set()
 plan_a = AttackPlan()
 plan_b = AttackPlan()
 
@@ -295,6 +354,67 @@ def add_card_count(card, my_index: int):
             add_card_count(c, my_index)
         for c in card.preEvolution:
             add_card_count(c, my_index)
+
+
+def _record_opp_id_serial(card_id, serial):
+    """Record one uniquely identified opponent card exactly once."""
+    if card_id is None or serial is None:
+        return
+    serial = int(serial)
+    if serial in opp_seen_serials:
+        return
+    opp_seen_serials.add(serial)
+    opp_seen_counts[int(card_id)] += 1
+
+
+def _record_opp_card(card):
+    if card is None:
+        return
+    _record_opp_id_serial(getattr(card, "id", None), getattr(card, "serial", None))
+    for group in ("energyCards", "tools", "preEvolution"):
+        for child in getattr(card, group, None) or []:
+            _record_opp_card(child)
+
+
+def _update_opp_seen(obs: Observation, my_index: int):
+    """Update public opponent card counts from this observation.
+
+    Serials make this idempotent even though the simulator repeats zones and
+    logs across selections.  Hidden hand/prize cards are never counted.
+    """
+    state = obs.current
+    op_state = state.players[1 - my_index]
+    for zone in (op_state.active, op_state.bench, op_state.discard):
+        for card in zone or []:
+            _record_opp_card(card)
+    for card in state.stadium or []:
+        if getattr(card, "playerIndex", -1) != my_index:
+            _record_opp_card(card)
+    for log in obs.logs or []:
+        if getattr(log, "playerIndex", -1) == my_index:
+            continue
+        card_id = getattr(log, "cardId", None)
+        serial = getattr(log, "serial", None)
+        if card_id is not None and serial is not None:
+            _record_opp_id_serial(card_id, serial)
+
+
+def _opp_unseen_total() -> int:
+    return max(0, 60 - sum(opp_seen_counts.values()))
+
+
+def _p_opp_card(obs: Observation, my_index: int, card_id: int, copies: int) -> float:
+    op_state = obs.current.players[1 - my_index]
+    remaining = max(0, int(copies) - int(opp_seen_counts.get(card_id, 0)))
+    return _hypergeom_at_least_one(
+        _opp_unseen_total(), remaining, int(op_state.handCount)
+    )
+
+
+def _p_self_any(card_counts, card_ids, turns: int) -> float:
+    unseen = sum(max(0, int(count)) for count in card_counts.values())
+    copies = sum(max(0, int(card_counts.get(card_id, 0))) for card_id in card_ids)
+    return _hypergeom_at_least_one(unseen, copies, turns)
 
 
 def set_card_counts(obs: Observation, my_index: int):
@@ -499,6 +619,24 @@ def _policy(obs_dict: dict) -> list[int]:
             card_counts[card.id] -= 1
     deck_counts = card_counts
 
+    # ── public-information belief (no learning) ────────────────────────────
+    # Opponent: count every revealed card and use a generic 2-3 copy prior for
+    # Boss's Orders.  We deliberately keep this conservative: it is only a
+    # risk signal, not a hard rule.
+    _update_opp_seen(obs, my_index)
+    boss_copies = 3 if opp_seen_counts.get(Boss_Orders, 0) else 2
+    boss_risk = _p_opp_card(obs, my_index, Boss_Orders, boss_copies)
+    my_hand_value = _hand_quality(my_state.hand)
+    expected_4 = _expected_draw_quality(card_counts, 4)
+    late_game = (
+        len(my_state.prize) <= 2
+        or len(op_state.prize) <= 2
+        or my_state.deckCount <= 10
+    )
+    turns_left = max(1, min(len(my_state.prize), len(op_state.prize)))
+    setup_ids = (Dreepy, Drakloak, Dragapult_ex, Rare_Candy)
+    p_setup = _p_self_any(card_counts, setup_ids, turns_left)
+
     prize_diff = len(my_state.prize) - len(op_state.prize)
 
     global bench_attacker
@@ -537,6 +675,31 @@ def _policy(obs_dict: dict) -> list[int]:
             bench_attacker = True
     main_pokemon_count = field_counts[Dreepy] + field_counts[Drakloak] + field_counts[Dragapult_ex]
     no_more_dex = (field_counts[Dragapult_ex] * 2 >= len(op_state.prize))
+
+    # Late-game feasibility.  If we already have a fuelled attacker, do not keep
+    # investing in a new Dreepy -> Drakloak -> Dragapult line unless the missing
+    # piece is likely to arrive before the prize race ends.  This is the
+    # "stop waiting for the bench setup" rule.
+    active_can_attack = any(
+        p is not None
+        and p.id == Dragapult_ex
+        and len(p.energies) >= (3 if night_mine else 2)
+        for p in my_state.active
+    )
+    has_attacker = bench_attacker or active_can_attack
+    hand_ids = {card.id for card in my_state.hand}
+    can_setup_now = (
+        can_evolve_dreepy
+        or can_evolve_drakloak
+        or (Rare_Candy in hand_ids and Dragapult_ex in hand_ids)
+        or (Dreepy in hand_ids and Drakloak in hand_ids)
+    )
+    late_no_setup = (
+        late_game
+        and has_attacker
+        and not can_setup_now
+        and p_setup < 0.30
+    )
 
     stadium_id = 0
     for card in state.stadium:
@@ -729,15 +892,37 @@ def _policy(obs_dict: dict) -> list[int]:
                     score = 30000
         elif id == Lillie_Determination:
             if not ignore_count or support_count == 0:
-                score = 45000
+                draw_n = 8 if len(my_state.prize) == 6 else 6
+                expected_lillie = _expected_draw_quality(card_counts, draw_n)
+                net_lillie = my_hand_value - expected_lillie
+                my_hand_count = len(my_state.hand)
+                if my_state.deckCount <= 8:
+                    score = 3000
+                elif my_hand_count <= 3 or net_lillie <= -4:
+                    score = 45000
+                elif my_hand_count >= 7 and net_lillie >= 3:
+                    score = 8000
+                elif len(my_state.prize) == 6:
+                    score = 42000
+                else:
+                    score = 25000
         elif id == Judge:
             if not ignore_count or support_count == 0:
-                if op_state.handCount >= 6:
-                    score = 42000
-                elif len(my_state.hand) <= 3:
-                    score = 30000
+                net_judge = my_hand_value - expected_4
+                opp_hand = int(op_state.handCount)
+                my_hand_count = len(my_state.hand)
+                if opp_hand >= 8 and net_judge <= 6:
+                    score = 55000
+                elif opp_hand >= 6 and net_judge <= 3:
+                    score = 45000
+                elif opp_hand - my_hand_count >= 3 and net_judge <= 4:
+                    score = 38000
+                elif my_hand_count <= 3 and opp_hand >= 4:
+                    score = 32000
+                elif net_judge > 4:
+                    score = 4000
                 else:
-                    score = 5000
+                    score = 7000
         elif id == Rosa_Encouragement:
             if not ignore_count or support_count == 0:
                 has_stage2 = any(
@@ -784,6 +969,24 @@ def _policy(obs_dict: dict) -> list[int]:
                     continue
                 max_score = max(max_score, attach_score(id, pokemon, pokemon in my_state.active))
             score = max_score - 5000
+
+        if late_no_setup:
+            # Only stop spending search resources on a setup line that cannot
+            # arrive in time.  Cards already in hand are still playable: the
+            # policy should not throw away a piece it already has.
+            if id == Rare_Candy:
+                score = min(score, 25000)
+            elif id == Buddy_Buddy_Poffin or id == Poke_Pad:
+                score = min(score, 12000)
+            elif id == Ultra_Ball:
+                score = min(score, 5000)
+
+        # A likely Boss's Orders makes another low-value bench body a liability.
+        # Keep the effect small: Dragapult still needs a bench for Phantom Dive.
+        if (score > 0 and boss_risk >= 0.5 and len(my_state.bench) >= 3
+                and id in (Fezandipiti_ex, Meowth_ex, Latias_ex, Budew,
+                           Munkidori, Dunsparce, Dudunsparce)):
+            score -= int(6000 * max(0.0, boss_risk - 0.35))
 
         if not ignore_count and hand_counts[id] > 0:
             if id == Drakloak and hand_counts[id] < evolve_dreepy_count:
@@ -985,7 +1188,7 @@ def _policy(obs_dict: dict) -> list[int]:
                 if no_more_dex:
                     score = -1
                 else:
-                    score = 75000
+                    score = 30000 if late_no_setup else 75000
             elif card.id == Unfair_Stamp:
                 score = 15000
             elif card.id == Night_Stretcher:
@@ -1025,17 +1228,17 @@ def _policy(obs_dict: dict) -> list[int]:
                 score = -1
             elif card.id == Buddy_Buddy_Poffin:
                 if deck_counts[Dreepy] > 0:
-                    score = 46000
+                    score = 12000 if late_no_setup else 46000
                 else:
                     score = -1
             elif card.id == Ultra_Ball:
                 if negative_hand_count >= 2:
-                    score = 44000
+                    score = 8000 if late_no_setup else 44000
                 else:
                     score = -1
             elif card.id == Poke_Pad:
                 if deck_counts[Dreepy] + deck_counts[Drakloak] > 0:
-                    score = 45000
+                    score = 12000 if late_no_setup else 45000
                 else:
                     score = -1
             elif card.id == Crispin or card.id == Brock_Scouting:
@@ -1122,6 +1325,8 @@ def reset():
     prize.clear()
     card_counts.clear()
     serial_set.clear()
+    opp_seen_counts.clear()
+    opp_seen_serials.clear()
     plan_a.attack = -1
     plan_a.counter = []
     plan_b.attack = -1
@@ -1133,6 +1338,8 @@ def reset():
     can_main_attack = False
     can_energy_attach = False
     diag_reset()
+    if _BELIEF is not None:
+        _BELIEF.reset()
 
 
 def _sel_get(select, key, default=None):
@@ -1362,6 +1569,33 @@ def _obs_select(obs):
     return getattr(obs, "select", None)
 
 
+def _observe(obs_dict):
+    """Log belief features for this real MAIN decision (never for search leaves).
+
+    Keeping this in agent(), rather than in _policy(), prevents the 1-ply
+    search rollouts from spamming the Kaggle agent log.
+    """
+    global _BELIEF
+    if not (_BELIEF_OK and BELIEF_LOG):
+        return
+    try:
+        select = _obs_select(obs_dict)
+        if select is None:
+            return
+        if int(_sel_get(select, "type", -1)) != int(SelectType.MAIN):
+            return
+        obs = obs_dict if isinstance(obs_dict, Observation) else to_observation_class(obs_dict)
+        if obs.current is None:
+            return
+        if _BELIEF is None:
+            _BELIEF = BeliefObserver(_load_deck())
+        if _BELIEF.update(obs, int(obs.current.yourIndex)) is not None:
+            _BELIEF.emit()
+    except Exception:
+        # Telemetry must never forfeit a game.
+        pass
+
+
 # NOTE: agent must be the LAST function defined in this module.  The Kaggle
 # validation runner calls the last callable it finds; defining reset() after
 # agent made it call reset() and fail with "Validation Episode failed".
@@ -1373,6 +1607,7 @@ def agent(obs_dict: dict) -> list[int]:
             return list(_load_deck())
     except Exception:
         pass
+    _observe(obs_dict)
     _DIAG["decisions"] += 1
     try:
         out = _policy(obs_dict)
