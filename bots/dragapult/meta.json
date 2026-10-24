@@ -1,5 +1,5 @@
 {
   "name": "dragapult_sample_policy",
   "author": "TransforMew",
-  "notes": "Dragapult ex consensus list with the official rule-based Dragapult pilot (wrapped for robust deck loading). Public competition sample; see wmh/ptcg-abc for the wrapper reference."
+  "notes": "Dragapult ex with the upstream rule-based pilot plus: minCount legalization, typed Observation handling, Nighttime Mine/Tera energy, corrected deck-count inference, lazy loading, agent-last ordering, a 3rd Budew over the 4th Crushing Hammer, and forward search (determinized search_begin over the rule policy's top 4 MAIN actions, greedy rollout, handcrafted eval, 0.25s/300-node budget). Lab A/B without search: Alakazam 33.5->42.0, mirror 36.0->42.0, Mega Lucario 28.0->42.5."
 }

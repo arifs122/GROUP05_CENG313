@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 import os
+import random
 import sys
+import time
 from collections import defaultdict
 
 from cg.api import (
-    AreaType, CardType, Log, LogType, Observation, SelectContext, OptionType,
-    Card, Pokemon, State, all_card_data, to_observation_class,
+    AreaType, CardType, Log, LogType, Observation, SelectContext, SelectType,
+    OptionType, Card, Pokemon, State, all_attack, all_card_data,
+    to_observation_class,
 )
+
+try:
+    from cg.api import search_begin, search_end, search_step
+    _SEARCH_OK = True
+except Exception:  # noqa: BLE001
+    _SEARCH_OK = False
 
 """
 Dragapult ex — Phantom Dive spread + Crushing Hammer disruption.
@@ -35,13 +44,37 @@ def _resolve_deck_path():
     raise FileNotFoundError("deck.csv not found")
 
 
-with open(_resolve_deck_path(), "r") as _f:
-    my_deck = [int(x) for x in _f.read().splitlines() if x.strip()][:60]
-if len(my_deck) != 60:
-    raise ValueError(f"deck.csv must have 60 ids, got {len(my_deck)}")
+my_deck: list[int] = []
 
-all_card = all_card_data()
-card_table = {c.cardId: c for c in all_card}
+
+def _load_deck() -> list[int]:
+    """Load deck.csv on first use, never at import time."""
+    global my_deck
+    if not my_deck:
+        with open(_resolve_deck_path(), "r") as _f:
+            cards = [int(x) for x in _f.read().splitlines() if x.strip()][:60]
+        if len(cards) != 60:
+            raise ValueError(f"deck.csv must have 60 ids, got {len(cards)}")
+        my_deck = cards
+    return my_deck
+
+
+def read_deck_csv() -> list[int]:
+    """Deck for the initial selection (also used by the validation harness)."""
+    return list(_load_deck())
+
+
+card_table: dict[int, object] = {}
+attack_table: dict[int, object] = {}
+
+
+def _load_cards():
+    """Populate card/attack metadata on first use, never at import time."""
+    global card_table, attack_table
+    if not card_table:
+        card_table.update({c.cardId: c for c in all_card_data()})
+        attack_table.update({a.attackId: a for a in all_attack()})
+    return card_table
 
 # Decklist ids
 Dreepy = 119
@@ -64,6 +97,25 @@ Crispin = 1198
 Brock_Scouting = 1210
 Lillie_Determination = 1227
 Team_Rocket_Watchtower = 1256
+Nighttime_Mine = 1266
+Munkidori = 112
+Dunsparce = 65
+Dudunsparce = 66
+Risky_Ruins = 1260
+Judge = 1213
+Rosa_Encouragement = 1240
+Basic_Dark_Energy = 7
+
+# The ladder data (78 replays) shows top Dragapult pilots choose first.
+GO_FIRST = False
+
+# Forward search: 1-ply lookahead over the rule policy's top candidates, then
+# a greedy rollout of the rest of our turn using the same policy.
+SEARCH_ENABLED = True
+SEARCH_K = 4
+SEARCH_TIME_BUDGET = float(os.environ.get("PTCG_SEARCH_BUDGET", "0.25"))
+SEARCH_NODE_BUDGET = int(os.environ.get("PTCG_SEARCH_NODES", "300"))
+SEARCH_ROLLOUT_MAX = 50
 Basic_Fire_Energy = 2
 Basic_Psychic_Energy = 5
 
@@ -93,6 +145,10 @@ plan_b = AttackPlan()
 # ── diagnostics ────────────────────────────────────────────────────────────────
 _DIAG = {"decisions": 0, "policy_ok": 0, "policy_fallback": 0,
          "obs_fallback": 0, "deck_returns": 0, "errors": {}}
+
+# Option scores from the most recent rule-policy call, aligned with
+# select.option.  The search uses them to choose candidate actions.
+_LAST_SCORES: list[float] = []
 
 
 def _diag_record_error(exc):
@@ -125,6 +181,57 @@ def _legal_fallback_from_dict(obs_dict):
         return list(range(min(max(0, sel.get("minCount", 0)), len(sel.get("option") or []))))
     except Exception:
         return []
+
+
+def _legal_fallback_select(select):
+    """Minimum legal selection from either a dict or a typed select."""
+    if isinstance(select, dict):
+        n = len(select.get("option") or [])
+        k = int(select.get("minCount", 0))
+    else:
+        n = len(getattr(select, "option", []) or [])
+        k = int(getattr(select, "minCount", 0))
+    return list(range(min(max(0, k), n)))
+
+
+def _legalize(action, select):
+    """Clamp an action to the legal shape for this selection.
+
+    Accepts either the dict-shaped select from the simulator or the typed
+    Observation.select, and never touches a deck return (select is None).
+    """
+    if select is None:
+        return list(action or [])
+    if isinstance(select, dict):
+        options = select.get("option") or []
+        min_count = int(select.get("minCount", 0))
+        max_count = int(select.get("maxCount", 0))
+    else:
+        options = getattr(select, "option", None)
+        if options is None:
+            return list(action or [])
+        min_count = int(getattr(select, "minCount", 0))
+        max_count = int(getattr(select, "maxCount", 0))
+
+    n = len(options)
+    min_count = max(0, min(min_count, n))
+    max_count = max(min_count, min(max_count, n))
+
+    out: list[int] = []
+    seen: set[int] = set()
+    for index in action or []:
+        if len(out) >= max_count:
+            break
+        if isinstance(index, int) and 0 <= index < n and index not in seen:
+            out.append(index)
+            seen.add(index)
+    for index in range(n):
+        if len(out) >= min_count:
+            break
+        if index not in seen:
+            out.append(index)
+            seen.add(index)
+    return out
 
 
 # ── sample helpers (verbatim) ──────────────────────────────────────────────────
@@ -336,7 +443,13 @@ def main_option_proc(obs: Observation, damage: int):
 
 # ── the sample policy (verbatim logic), renamed; called inside a guard ──────────
 def _policy(obs_dict: dict) -> list[int]:
-    obs = to_observation_class(obs_dict)
+    # The simulator normally hands us a dict, but the initial deck-selection
+    # observation arrives as a typed Observation.  Accept both instead of
+    # re-converting an object through to_observation_class (which loses select).
+    global _LAST_SCORES
+    _LAST_SCORES = []
+    _load_cards()
+    obs = obs_dict if isinstance(obs_dict, Observation) else to_observation_class(obs_dict)
     if obs.select is None:
         _DIAG["deck_returns"] += 1
         return my_deck
@@ -374,18 +487,16 @@ def _policy(obs_dict: dict) -> list[int]:
                     and log.toArea == AreaType.DISCARD):
                 pre_ko = True
 
+    # `card_counts` after set_card_counts is (deck + prizes), i.e. every card
+    # we have not seen.  That is the right quantity for "can this search card
+    # still find a Dreepy?"  The previous code tried to subtract an inferred
+    # prize pool, but the inference actually produced the cards revealed by
+    # the last search, so deck_counts ended up holding only those and search
+    # cards were undervalued for the rest of the game.
+    set_card_counts(obs, my_index)
     if select.deck is not None:
-        set_card_counts(obs, my_index)
         for card in select.deck:
             card_counts[card.id] -= 1
-        prize.clear()
-        for id in card_counts:
-            for _ in range(card_counts[id]):
-                prize.append(id)
-
-    set_card_counts(obs, my_index)
-    for id in prize:
-        card_counts[id] -= 1
     deck_counts = card_counts
 
     prize_diff = len(my_state.prize) - len(op_state.prize)
@@ -402,6 +513,7 @@ def _policy(obs_dict: dict) -> list[int]:
     evolve_dreepy_count = 0
     can_evolve_drakloak = False
     damage = 200
+    night_mine = any(card.id == Nighttime_Mine for card in state.stadium)
     for card in my_state.active:
         if card is None:
             continue
@@ -421,7 +533,7 @@ def _policy(obs_dict: dict) -> list[int]:
                 evolve_dreepy_count += 1
             elif card.id == Drakloak:
                 can_evolve_drakloak = True
-        if card.id == Dragapult_ex and len(card.energies) >= 2:
+        if card.id == Dragapult_ex and len(card.energies) >= (3 if night_mine else 2):
             bench_attacker = True
     main_pokemon_count = field_counts[Dreepy] + field_counts[Drakloak] + field_counts[Dragapult_ex]
     no_more_dex = (field_counts[Dragapult_ex] * 2 >= len(op_state.prize))
@@ -437,6 +549,19 @@ def _policy(obs_dict: dict) -> list[int]:
 
     def attach_score(attach_id: int, pokemon: Pokemon, active: bool) -> int:
         energy_count = len(pokemon.energies)
+        # Dark Energy exists only for Munkidori's Adrena-Brain.
+        if attach_id == Basic_Dark_Energy:
+            has_dark = any(
+                card_table.get(e.id) is not None and int(card_table[e.id].energyType) == 7
+                for e in pokemon.energyCards
+            )
+            if pokemon.id == Munkidori and not has_dark:
+                return 28000
+            return UNNECESSARY
+        # Nighttime Mine taxes Tera attacks by one {C}, and Dragapult ex is
+        # Tera.  Without this the pilot caps at two energy and can never use
+        # Phantom Dive while the opponent's stadium is up.
+        needed = 3 if (pokemon.id == Dragapult_ex and night_mine) else 2
         if card_table[attach_id].cardType == CardType.TOOL:
             score = 60000
             if active:
@@ -455,7 +580,7 @@ def _policy(obs_dict: dict) -> list[int]:
         if active and can_main_attack:
             return UNNECESSARY
         score = 20000
-        if energy_count >= 2:
+        if energy_count >= needed:
             return UNNECESSARY          # already fueled up, don't over-fill
         elif energy_count == 1:
             if attach_id == pokemon.energyCards[0].id:
@@ -541,6 +666,12 @@ def _policy(obs_dict: dict) -> list[int]:
                 score = 40
             else:
                 score = 35000
+        elif id == Munkidori:
+            score = 15000 if field_counts[Munkidori] == 0 else 500
+        elif id == Dunsparce:
+            score = 12000 if field_counts[Dunsparce] + field_counts[Dudunsparce] == 0 else 500
+        elif id == Dudunsparce:
+            score = 30000 if field_counts[Dunsparce] >= 1 else 5000
         elif id == Rare_Candy:
             if no_more_dex:
                 score = UNNECESSARY
@@ -599,6 +730,35 @@ def _policy(obs_dict: dict) -> list[int]:
         elif id == Lillie_Determination:
             if not ignore_count or support_count == 0:
                 score = 45000
+        elif id == Judge:
+            if not ignore_count or support_count == 0:
+                if op_state.handCount >= 6:
+                    score = 42000
+                elif len(my_state.hand) <= 3:
+                    score = 30000
+                else:
+                    score = 5000
+        elif id == Rosa_Encouragement:
+            if not ignore_count or support_count == 0:
+                has_stage2 = any(
+                    p is not None and p.id == Dragapult_ex
+                    for p in (my_state.active + my_state.bench)
+                )
+                has_energy = any(
+                    discard_counts[c] > 0
+                    and c in card_table
+                    and card_table[c].cardType == CardType.BASIC_ENERGY
+                    for c in discard_counts
+                )
+                if len(my_state.prize) > len(op_state.prize) and has_stage2 and has_energy:
+                    score = 46000
+                else:
+                    score = UNNECESSARY
+        elif id == Risky_Ruins:
+            if stadium_id == Risky_Ruins:
+                score = UNNECESSARY
+            else:
+                score = 5000 if stadium_id else 3000
         elif id == Team_Rocket_Watchtower:
             if stadium_id != 0 and stadium_id != Team_Rocket_Watchtower:
                 score = 4000
@@ -617,6 +777,13 @@ def _policy(obs_dict: dict) -> list[int]:
                 score = max_score - 5000
                 if can_main_attack or bench_attacker:
                     score /= 10
+        elif id == Basic_Dark_Energy:
+            max_score = -10000
+            for pokemon in my_state.active + my_state.bench:
+                if pokemon is None:
+                    continue
+                max_score = max(max_score, attach_score(id, pokemon, pokemon in my_state.active))
+            score = max_score - 5000
 
         if not ignore_count and hand_counts[id] > 0:
             if id == Drakloak and hand_counts[id] < evolve_dreepy_count:
@@ -666,7 +833,7 @@ def _policy(obs_dict: dict) -> list[int]:
             score = o.number
         elif o.type == OptionType.YES:
             if context == SelectContext.IS_FIRST:
-                score = -1
+                score = 1 if GO_FIRST else -1
             else:
                 score = 1
         elif o.type == OptionType.CARD:
@@ -718,7 +885,14 @@ def _policy(obs_dict: dict) -> list[int]:
                         support_count -= 1
                     score = -hand_score(card.id, False)
                 elif context == SelectContext.DAMAGE_COUNTER or context == SelectContext.DAMAGE_COUNTER_ANY:
-                    if hp > 0:
+                    if effect_card_id == Munkidori and hp > 0:
+                        # Adrena-Brain moves up to 3 counters (30 damage).
+                        score = 100000 - 10 * hp + pokemon_score(card, False)
+                        if hp <= 30:
+                            score += 50000
+                        elif hp <= 60:
+                            score += 20000
+                    elif hp > 0:
                         score = 100000 - 10 * hp + pokemon_score(card, False)
                         if context == SelectContext.DAMAGE_COUNTER:
                             if 210 <= hp <= 230:
@@ -745,6 +919,17 @@ def _policy(obs_dict: dict) -> list[int]:
                                     score -= 100000
                             if no_damage_counter(card):
                                 score = -1
+                elif context == SelectContext.REMOVE_DAMAGE_COUNTER:
+                    # Adrena-Brain source: heal the most damaged body, and
+                    # prefer Dragapult ex (2 prizes) over a support Pokémon.
+                    if isinstance(card, Pokemon):
+                        max_hp = getattr(card, "maxHp", hp) or hp
+                        missing = max(0, max_hp - hp)
+                        score = (
+                            missing * 10
+                            + (5000 if card.id == Dragapult_ex else 0)
+                            + pokemon_score(card, False) * 0.05
+                        )
                 elif context == SelectContext.ATTACH_FROM:
                     score = attach_score(context_card_id, card, o.area == AreaType.ACTIVE)
                     if card.id == Dragapult_ex:
@@ -792,6 +977,10 @@ def _policy(obs_dict: dict) -> list[int]:
                     score = 50000
                 else:
                     score = -1
+            elif card.id == Munkidori:
+                score = 26000 if field_counts[Munkidori] == 0 else -1
+            elif card.id == Dunsparce:
+                score = 24000 if field_counts[Dunsparce] + field_counts[Dudunsparce] == 0 else -1
             elif card.id == Rare_Candy:
                 if no_more_dex:
                     score = -1
@@ -816,11 +1005,22 @@ def _policy(obs_dict: dict) -> list[int]:
                     score = 14000
                 else:
                     score = -1
+            elif card.id == Judge:
+                score = 30000 if card.id == use_support else -1
+            elif card.id == Rosa_Encouragement:
+                score = 32000 if card.id == use_support else -1
             elif card.id == Team_Rocket_Watchtower:
                 if stadium_id > 0 or state.turn == 1:
                     score = 80000
                 else:
                     score = -1
+            elif card.id == Risky_Ruins:
+                if stadium_id == Risky_Ruins:
+                    score = -1
+                elif stadium_id > 0:
+                    score = 8000
+                else:
+                    score = 4000
             elif no_draw:
                 score = -1
             elif card.id == Buddy_Buddy_Poffin:
@@ -854,13 +1054,20 @@ def _policy(obs_dict: dict) -> list[int]:
             score += len(pokemon.energies)
             if pokemon.id == Dreepy:
                 score += 30000
-            elif field_counts[Dragapult_ex] >= 2 or (field_counts[Dragapult_ex] == 1 and len(op_state.prize) <= 2):
+            elif pokemon.id == Dunsparce:
+                score += 40000
+            elif pokemon.id == Drakloak and (
+                field_counts[Dragapult_ex] >= 2
+                or (field_counts[Dragapult_ex] == 1 and len(op_state.prize) <= 2)
+            ):
                 score = -1
             else:
                 score += 70000
         elif o.type == OptionType.ABILITY:
             card = get_card(obs, o.area, o.index, my_index)
-            if no_draw:
+            if card.id == Munkidori:
+                score = 30000
+            elif no_draw:
                 score = -1
             elif card.id == 1267:  # Lumiose City
                 score = 1
@@ -877,6 +1084,7 @@ def _policy(obs_dict: dict) -> list[int]:
         scores.append(score)
 
     output = []
+    sorted_scores = []
     if len(scores) >= 1:
         sorted_scores = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
         for i in range(select.maxCount):
@@ -885,31 +1093,310 @@ def _policy(obs_dict: dict) -> list[int]:
                     or (context != SelectContext.TO_BENCH and context != SelectContext.SETUP_BENCH_POKEMON)):
                 output.append(sorted_scores[i][0])
 
-    return output
+    # Every option can score UNNECESSARY, leaving a short (or empty) selection.
+    # Fill up to minCount from the ranking; an UNNECESSARY option is still a
+    # legal choice, and returning too few indices is a forfeit.
+    if len(output) < select.minCount:
+        for index, _score in sorted_scores:
+            if len(output) >= select.minCount:
+                break
+            if index not in output:
+                output.append(index)
+
+    _LAST_SCORES = list(scores)
+    return _legalize(output, select)
 
 
-def agent(obs_dict):
+def reset():
+    """Clear cross-game state.  The arena calls this before every battle.
+
+    Several globals (turn logs, inferred prize pool, plan) survive between
+    games otherwise, and a match that ends on the same turn number as the
+    next one starts can inherit stale data.
+    """
+    global pre_turn_log, current_turn_log, bench_attacker, use_support
+    global can_switch, can_attack, can_main_attack, can_energy_attach
+
+    pre_turn_log = []
+    current_turn_log = []
+    prize.clear()
+    card_counts.clear()
+    serial_set.clear()
+    plan_a.attack = -1
+    plan_a.counter = []
+    plan_b.attack = -1
+    plan_b.counter = []
+    bench_attacker = False
+    use_support = 0
+    can_switch = False
+    can_attack = False
+    can_main_attack = False
+    can_energy_attach = False
+    diag_reset()
+
+
+def _sel_get(select, key, default=None):
+    if isinstance(select, dict):
+        return select.get(key, default)
+    return getattr(select, key, default)
+
+
+def _snapshot_state() -> dict:
+    return {
+        "pre": list(pre_turn_log),
+        "cur": list(current_turn_log),
+        "prize": list(prize),
+        "cards": dict(card_counts),
+        "serials": set(serial_set),
+        "bench": bench_attacker,
+        "support": use_support,
+        "can_switch": can_switch,
+        "can_attack": can_attack,
+        "can_main_attack": can_main_attack,
+        "can_energy_attach": can_energy_attach,
+        "plan_a": (plan_a.attack, list(plan_a.counter)),
+        "plan_b": (plan_b.attack, list(plan_b.counter)),
+        "scores": list(_LAST_SCORES),
+    }
+
+
+def _restore_state(state: dict) -> None:
+    global pre_turn_log, current_turn_log, prize, card_counts, serial_set
+    global bench_attacker, use_support, can_switch, can_attack, can_main_attack
+    global can_energy_attach, _LAST_SCORES
+
+    pre_turn_log[:] = state["pre"]
+    current_turn_log[:] = state["cur"]
+    prize[:] = state["prize"]
+    card_counts.clear()
+    card_counts.update(state["cards"])
+    serial_set.clear()
+    serial_set.update(state["serials"])
+    bench_attacker = state["bench"]
+    use_support = state["support"]
+    can_switch = state["can_switch"]
+    can_attack = state["can_attack"]
+    can_main_attack = state["can_main_attack"]
+    can_energy_attach = state["can_energy_attach"]
+    plan_a.attack, plan_a.counter = state["plan_a"][0], list(state["plan_a"][1])
+    plan_b.attack, plan_b.counter = state["plan_b"][0], list(state["plan_b"][1])
+    _LAST_SCORES = list(state["scores"])
+
+
+def _sample_hidden(obs, me):
+    """Determinize the hidden zones for search_begin.
+
+    Our own deck/prizes are sampled from the cards the policy has not seen.
+    The opponent's list is unknown, so we use our own list as a plausible
+    stand-in (the same shortcut Bellibolt's reference agent uses).
+    """
+    st = obs.current
+    my = st.players[me]
+    op = st.players[1 - me]
+    deck_list = _load_deck()
+
+    set_card_counts(obs, me)
+    pool = []
+    for cid, count in card_counts.items():
+        if count > 0:
+            pool.extend([int(cid)] * int(count))
+    sel = obs.select
+    if sel is not None and getattr(sel, "deck", None):
+        for card in sel.deck:
+            if int(card.id) in pool:
+                pool.remove(int(card.id))
+
+    need_my = int(my.deckCount) + len(my.prize)
+    if len(pool) < need_my:
+        pool.extend((deck_list * ((need_my - len(pool)) // max(1, len(deck_list)) + 1)))
+    random.shuffle(pool)
+    my_prize = pool[:len(my.prize)]
+    my_deck = pool[len(my.prize):len(my.prize) + int(my.deckCount)]
+
+    op_pool = deck_list * 8
+    random.shuffle(op_pool)
+    op_prize = op_pool[:len(op.prize)]
+    op_hand = op_pool[len(op.prize):len(op.prize) + int(op.handCount)]
+    op_deck = op_pool[len(op.prize) + int(op.handCount):
+                     len(op.prize) + int(op.handCount) + int(op.deckCount)]
+    while len(op_deck) < int(op.deckCount):
+        op_deck.append(deck_list[0])
+
+    opp_active = []
+    if op.active and op.active[0] is None:
+        opp_active = [Dreepy]
+    return my_deck, my_prize, op_deck, op_prize, op_hand, opp_active
+
+
+def _eval_state(obs, me) -> float:
+    """Leaf evaluation from our perspective (end of our turn)."""
+    st = obs.current
+    if st is None:
+        return 0.0
+    if int(st.result) >= 0:
+        return 1e9 if int(st.result) == me else -1e9
+    my = st.players[me]
+    op = st.players[1 - me]
+
+    value = (len(op.prize) - len(my.prize)) * 12000.0
+    for sign, ps in ((1.0, my), (-1.0, op)):
+        for pokemon in (ps.active + ps.bench):
+            if pokemon is None:
+                continue
+            value += sign * (pokemon.hp * 2.0 + len(pokemon.energies) * 150.0)
+    value += len(my.bench) * 200.0 + len(my.hand) * 15.0
+
+    my_active = (my.active or [None])[0]
+    op_active = (op.active or [None])[0]
+    if my_active is not None and op_active is not None:
+        if _max_damage(op_active, my_active) >= my_active.hp:
+            data = card_table.get(my_active.id)
+            prizes = 3 if getattr(data, "megaEx", False) else 2 if getattr(data, "ex", False) else 1
+            value -= prizes * 5000.0
+        if _max_damage(my_active, op_active) >= op_active.hp:
+            data = card_table.get(op_active.id)
+            prizes = 3 if getattr(data, "megaEx", False) else 2 if getattr(data, "ex", False) else 1
+            value += prizes * 4000.0
+    return value
+
+
+def _max_damage(attacker, defender) -> int:
+    if attacker is None or defender is None:
+        return 0
+    data = card_table.get(attacker.id)
+    if data is None:
+        return 0
+    # The opponent gets one more manual attachment before attacking.
+    energy = len(attacker.energies) + 1
+    best = 0
+    for attack_id in getattr(data, "attacks", None) or []:
+        attack = attack_table.get(int(attack_id))
+        if attack is None:
+            continue
+        if len(getattr(attack, "energies", None) or []) > energy:
+            continue
+        damage = int(getattr(attack, "damage", 0) or 0)
+        defender_data = card_table.get(defender.id)
+        if defender_data is not None:
+            if (getattr(defender_data, "weakness", None) is not None
+                    and int(defender_data.weakness) == int(getattr(data, "energyType", -1))):
+                damage *= 2
+            if (getattr(defender_data, "resistance", None) is not None
+                    and int(defender_data.resistance) == int(getattr(data, "energyType", -1))):
+                damage = max(0, damage - 30)
+        best = max(best, damage)
+    return best
+
+
+def _search_main(obs, select, scores):
+    """1-ply search over the rule policy's top MAIN candidates."""
+    if not (_SEARCH_OK and SEARCH_ENABLED):
+        return None
+    if select is None or int(_sel_get(select, "type", -1)) != int(SelectType.MAIN):
+        return None
+    if int(_sel_get(select, "maxCount", 0)) != 1:
+        return None
+    options = _sel_get(select, "option", None) or []
+    if len(options) < 2 or len(scores) != len(options):
+        return None
+
+    order = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+    candidates = [i for i in order if scores[i] > UNNECESSARY][:SEARCH_K]
+    if len(candidates) < 2:
+        return None
+
+    me = int(obs.current.yourIndex)
+    snapshot = _snapshot_state()
+    best_index = None
+    best_value = float("-inf")
+    started = time.perf_counter()
+    nodes = 0
+    try:
+        for candidate in candidates:
+            if time.perf_counter() - started > SEARCH_TIME_BUDGET:
+                break
+            try:
+                hidden = _sample_hidden(obs, me)
+                state = search_begin(obs, *hidden)
+                search_id = state.searchId
+            except Exception:
+                break
+            try:
+                current = search_step(search_id, [candidate])
+                for _ in range(SEARCH_ROLLOUT_MAX):
+                    if (time.perf_counter() - started > SEARCH_TIME_BUDGET
+                            or nodes >= SEARCH_NODE_BUDGET):
+                        break
+                    leaf = current.observation
+                    if leaf is None or leaf.select is None or leaf.current is None:
+                        break
+                    if int(leaf.current.result) >= 0:
+                        break
+                    if int(leaf.current.yourIndex) != me:
+                        break
+                    action = _policy(leaf)
+                    if not action:
+                        break
+                    current = search_step(search_id, action)
+                    nodes += 1
+                value = _eval_state(current.observation, me)
+                if value > best_value:
+                    best_value = value
+                    best_index = candidate
+            except Exception:
+                pass
+            finally:
+                try:
+                    search_end()
+                except Exception:
+                    pass
+    finally:
+        _restore_state(snapshot)
+    return best_index
+
+
+def _obs_select(obs):
+    """Read select from either the simulator dict or a typed Observation."""
+    if isinstance(obs, dict):
+        return obs.get("select")
+    return getattr(obs, "select", None)
+
+
+# NOTE: agent must be the LAST function defined in this module.  The Kaggle
+# validation runner calls the last callable it finds; defining reset() after
+# agent made it call reset() and fail with "Validation Episode failed".
+def agent(obs_dict: dict) -> list[int]:
     """Robust wrapper: deck-return shortcut + try/except guard around the sample pilot."""
     try:
-        if isinstance(obs_dict, dict) and obs_dict.get("select") is None:
+        if _obs_select(obs_dict) is None:
             _DIAG["deck_returns"] += 1
-            return my_deck
+            return list(_load_deck())
     except Exception:
         pass
     _DIAG["decisions"] += 1
     try:
         out = _policy(obs_dict)
         _DIAG["policy_ok"] += 1
-        return out
+        select = _obs_select(obs_dict)
+        try:
+            if (select is not None
+                    and int(_sel_get(select, "type", -1)) == int(SelectType.MAIN)):
+                obs_obj = obs_dict if isinstance(obs_dict, Observation) else to_observation_class(obs_dict)
+                better = _search_main(obs_obj, select, _LAST_SCORES)
+                if better is not None:
+                    out = [better]
+        except Exception as _search_exc:  # noqa: BLE001
+            _diag_record_error(_search_exc)
+        return _legalize(out, select)
     except Exception as exc:
         _diag_record_error(exc)
         _DIAG["policy_fallback"] += 1
         try:
-            obs = to_observation_class(obs_dict)
-            if obs.select is None:
+            sel = _obs_select(obs_dict)
+            if sel is None:
                 _DIAG["deck_returns"] += 1
                 return my_deck
-            return _legal_fallback(obs.select)
+            return _legalize(_legal_fallback_select(sel), sel)
         except Exception as exc2:
             _diag_record_error(exc2)
             _DIAG["obs_fallback"] += 1
