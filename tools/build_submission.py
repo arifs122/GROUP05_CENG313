@@ -24,6 +24,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LIMIT_MIB = 197.7
 
+# Runtime files that live outside the bot folder but must ship in the bundle.
+# ``features.py`` and ``model.npz`` are the shared Mazlum featurizer and weights;
+# ``bots/mazlum/agent.py`` looks for both next to itself first.
+BOT_EXTRAS: dict[str, list[tuple[Path, str]]] = {
+    "mazlum": [
+        (ROOT / "src" / "mazlum" / "features.py", "features.py"),
+        (ROOT / "data" / "mazlum" / "model.npz", "model.npz"),
+    ],
+}
+
 
 def read_deck_count(path: Path) -> int:
     return len([line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()])
@@ -93,6 +103,14 @@ def main() -> int:
             continue
         shutil.copy2(path, stage / path.name)
     shutil.copy2(deck_path, stage / "deck.csv")
+
+    if bot_dir is not None:
+        for source, target_name in BOT_EXTRAS.get(bot_dir.name, []):
+            if not source.is_file():
+                raise SystemExit(f"bundle extra not found: {source}")
+            shutil.copy2(source, stage / target_name)
+            print(f"extra: {source.relative_to(ROOT)} -> {target_name}")
+
     shutil.copytree(cg_dir, stage / "cg", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
