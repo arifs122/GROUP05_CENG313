@@ -1,0 +1,5 @@
+{
+  "name": "dragapult_damped",
+  "author": "TransforMew",
+  "notes": "Dragapult ex with the refined hooks but deliberately weak probability influence: late-setup search pruning only when turns_left<=2 and p_setup<0.20; Boss-risk bench penalty only at p>=0.60 and bench>=4. Keeps the Lillie/Judge low-deck guard."
+}

@@ -42,6 +42,10 @@ SOURCES = {
     "mega_froslass": ROOT / "decks" / "meta" / "mega_froslass.csv",
     "ns_zorua": ROOT / "decks" / "meta" / "ns_zorua.csv",
     "crustle_fire": ROOT / "decks" / "meta" / "crustle_fire.csv",
+    "archaludon": ROOT / "decks" / "meta" / "archaludon.csv",
+    "garchomp": ROOT / "benchmarks" / "external_agents" / "garchomp" / "deck.csv",
+    "bellibolt": ROOT / "benchmarks" / "external_agents" / "bellibolt" / "deck.csv",
+    "grimmsnarl": ROOT / "benchmarks" / "external_agents" / "grimmsnarl" / "deck.csv",
 }
 
 # Approximate Oct-24 top-team frequency priors.  Missing names get weight 1.
@@ -65,6 +69,10 @@ PRIORS = {
     "munkidori_crustle": 1,
     "mega_froslass": 1,
     "crustle_fire": 4,
+    "archaludon": 3,
+    "garchomp": 1,
+    "bellibolt": 1,
+    "grimmsnarl": 2,
 }
 
 

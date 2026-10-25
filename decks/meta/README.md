@@ -57,6 +57,7 @@ güncellendi.
 | `munkidori_crustle.csv` | Munkidori + Crustle + Froslass |
 | `crustle_fire.csv` | Dwebble/Crustle + Centiskorch |
 | `ns_zorua.csv` | N's Zorua / N's Zoroark ex / Xerosic / N's Castle |
+| `archaludon.csv` | Replay’den çıkarılan Archaludon listesi |
 
 ## İlk bot: Banette + Kieran + Bloodmoon + Neutralization Zone
 

@@ -1,0 +1,5 @@
+{
+  "name": "dragapult_damped_profile",
+  "author": "TransforMew",
+  "notes": "Damped Dragapult policy plus confidence-gated archetype profiles (aggro/setup/spread/lock/mirror/tank). Profiles activate only with >=6 seen cards, top1>=0.66 and a >=0.16 margin; otherwise default. Profile effects are small score nudges, never hard switches."
+}
