@@ -167,27 +167,39 @@ def features(obs, me):
 
 
 def load_states(root: Path, stride: int, max_episodes: int = 0):
-    paths = sorted(root.rglob("*.json"))
-    by_id = {}
+    """Load a bounded, deduplicated set of episode files one by one.
+
+    The old version stored every episode JSON in a dict before applying
+    --max-episodes, which could use many GB and trigger Kaggle OOM.  Now the
+    file list is sampled first; only the selected files are loaded and each
+    JSON is released immediately.
+    """
+    paths = sorted(root.rglob("episode-*.json"))
+    seen_names = set()
+    unique = []
     for path in paths:
+        if path.name in seen_names:
+            continue
+        seen_names.add(path.name)
+        unique.append(path)
+    if max_episodes and len(unique) > max_episodes:
+        random.Random(7).shuffle(unique)
+        unique = unique[:max_episodes]
+    print("selected episode files", len(unique))
+
+    X, y, groups = [], [], []
+    for path in unique:
         try:
             e = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
         eid = get(get(e, "info", {}) or {}, "EpisodeId")
-        if eid is not None:
-            by_id.setdefault(int(eid), e)
-    if max_episodes and len(by_id) > max_episodes:
-        ids = list(by_id)
-        random.Random(7).shuffle(ids)
-        by_id = {k: by_id[k] for k in ids[:max_episodes]}
-
-    X, y, groups = [], [], []
-    for eid, e in by_id.items():
         decks = extract_decks(e)
         rewards = get(e, "rewards", None) or []
-        if not decks or len(rewards) != 2 or rewards[0] == rewards[1]:
+        if eid is None or not decks or len(rewards) != 2 or rewards[0] == rewards[1]:
+            del e
             continue
+        eid = int(eid)
         for me in (0, 1):
             if not is_dragapult(decks[me]):
                 continue
@@ -209,6 +221,7 @@ def load_states(root: Path, stride: int, max_episodes: int = 0):
                 X.append(f)
                 y.append(label)
                 groups.append(eid)
+        del e
     return np.asarray(X, dtype=np.float64), np.asarray(y, dtype=np.float64), np.asarray(groups)
 
 
@@ -259,9 +272,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--replays", type=Path, default=Path("/kaggle/input/ptcg-replays"))
     parser.add_argument("--out", type=Path, default=Path("/kaggle/working"))
-    parser.add_argument("--stride", type=int, default=3)
-    parser.add_argument("--max-episodes", type=int, default=400)
-    parser.add_argument("--epochs", type=int, default=400)
+    parser.add_argument("--stride", type=int, default=4)
+    parser.add_argument("--max-episodes", type=int, default=200)
+    parser.add_argument("--epochs", type=int, default=300)
     args = parser.parse_args()
     X, y, groups = load_states(args.replays, max(1, args.stride), args.max_episodes)
     if not len(X):
