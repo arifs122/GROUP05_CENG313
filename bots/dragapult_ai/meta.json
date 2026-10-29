@@ -1,0 +1,5 @@
+{
+  "name": "dragapult_ai_value",
+  "author": "TransforMew",
+  "notes": "Experimental lean4 + belief-posterior opponent determinization + public-state value model leaf blend. Local A/B did not beat lean4; not submitted."
+}
