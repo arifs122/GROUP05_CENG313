@@ -251,7 +251,7 @@ def team_names(episode: dict) -> list[str]:
 
 def winner_index(episode: dict) -> int | None:
     rewards = episode.get("rewards") or []
-    if len(rewards) != 2:
+    if len(rewards) != 2 or rewards[0] is None or rewards[1] is None:
         return None
     if rewards[0] == rewards[1]:
         return None

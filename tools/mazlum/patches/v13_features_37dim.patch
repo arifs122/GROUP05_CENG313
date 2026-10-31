@@ -1,0 +1,154 @@
+﻿diff --git a/src/mazlum/features.py b/src/mazlum/features.py
+index 3992ba7..5970552 100644
+--- a/src/mazlum/features.py
++++ b/src/mazlum/features.py
+@@ -65,7 +65,12 @@ ENERGY_TYPE_COUNT = 12
+ CARD_ID_LIMIT = 2048
+ 
+ # Deck fingerprint: counts of the 60 cards bucketed by ``card_id % N``.
+-DECK_HISTOGRAM_BUCKETS = 64
++# v13: 64 -> 16 buckets; the freed 48 dims carry dynamic strategy signals.
++DECK_HISTOGRAM_BUCKETS = 16
++
++# Card types / ids used by the v13 strategic features.
++SUPPORTER = 3          # cg.api.CardType.SUPPORTER
++BOSS_ORDERS_ID = 1182  # gust card in the Banette list (3 copies)
+ 
+ STATE_FEATURE_NAMES = (
+     "active_hp",
+@@ -77,6 +82,20 @@ STATE_FEATURE_NAMES = (
+     "opp_active_energy",
+     "my_bench_ratio",
+     "opp_bench_ratio",
++    # v13 strategic signals (12): Poltergeist value, prize race, deck-out
++    # pressure and public discard information.
++    "opp_hand_count",
++    "my_prizes",
++    "opp_prizes",
++    "my_prize_progress",
++    "opp_prize_threat",
++    "my_deck_ratio",
++    "opp_deck_ratio",
++    "my_discard_supporters",
++    "opp_discard_supporters",
++    "my_discard_boss",
++    "opp_discard_boss",
++    "opp_bench_energy",
+     *(f"deck_bucket_{i}" for i in range(DECK_HISTOGRAM_BUCKETS)),
+ )
+ 
+@@ -195,8 +214,15 @@ def iter_decisions(episode: dict) -> Iterator[Decision]:
+             select = observation.get("select")
+             if not select:
+                 continue
+-            action = steps[step_index + 1][player].get("action") or []
+-            yield Decision(step_index, player, observation, select, list(action))
++            answer = steps[step_index + 1][player].get("action") or []
++            if isinstance(answer, dict):
++                # Some mined episodes store the choice as {"action": [...]}.
++                answer = next(
++                    (value for value in answer.values() if isinstance(value, list)), []
++                )
++            if not isinstance(answer, list):
++                answer = []
++            yield Decision(step_index, player, observation, select, list(answer))
+ 
+ 
+ def _get(obj, key: str, default=None):
+@@ -347,10 +373,50 @@ def _prize_diff(observation: dict, player: int) -> float:
+ 
+ 
+ def _hand_count(state: dict) -> float:
+-    hand = state.get("hand")
+-    if hand is None:
+-        return float(state.get("handCount", 0) or 0)
+-    return float(len(hand))
++    """Cards in hand. ``handCount`` is authoritative: the opponent's ``hand``
++    list is always empty (hidden information), so len(hand) would read 0."""
++    return float(state.get("handCount", 0) or 0)
++
++
++def _prize_count(observation: dict, player: int) -> float:
++    """Prizes still face-down for ``player`` (0-6)."""
++    return float(len(_player_state(observation, player).get("prize") or []))
++
++
++def _opp_hand_count(observation: dict, player: int) -> float:
++    """Opponent's hand size ΓÇö the damage scaling of Poltergeist."""
++    return float(_player_state(observation, 1 - player).get("handCount", 0) or 0)
++
++
++def _deck_ratio(state: dict) -> float:
++    """Remaining deck in ``[0, 1]`` (deck-out / Iono value)."""
++    return float(state.get("deckCount", 60) or 60) / 60.0
++
++
++def _card_type(card) -> int:
++    """CardType of a card dict from the observation (-1 when unknown)."""
++    card_id = int((card or {}).get("id", 0) or 0)
++    meta = _card_table().get(card_id)
++    return int(getattr(meta, "cardType", -1)) if meta is not None else -1
++
++
++def _discard(observation: dict, player: int) -> list:
++    return _player_state(observation, player).get("discard") or []
++
++
++def _discard_supporters(observation: dict, player: int) -> float:
++    """Supporter cards in the public discard pile."""
++    return float(sum(1 for card in _discard(observation, player) if _card_type(card) == SUPPORTER))
++
++
++def _discard_has(observation: dict, player: int, card_id: int) -> float:
++    """1.0 when ``card_id`` is already in the public discard (spent resource)."""
++    return 1.0 if any(int((card or {}).get("id", 0) or 0) == card_id for card in _discard(observation, player)) else 0.0
++
++
++def _bench_energy(state: dict) -> float:
++    """Total energy attached to the bench (setup speed proxy)."""
++    return float(sum(len(pokemon.get("energy") or []) for pokemon in (state.get("bench") or [])))
+ 
+ 
+ def deck_histogram(deck: list[int] | None) -> np.ndarray:
+@@ -388,15 +454,20 @@ def _opp_active_energy(state: dict) -> float:
+ 
+ 
+ def state_vector(observation: dict, deck: list[int] | None = None) -> np.ndarray:
+-    """1D tactical state vector.
++    """1D tactical state vector (v13, 37 dims).
+ 
+     ``[active_hp, prize_diff, hand_count, my_active_id, opp_active_id,
+     opp_active_hp, opp_active_energy, my_bench_ratio, opp_bench_ratio,
+-    deck_histogram(64)]``
++    opp_hand_count, my_prizes, opp_prizes, my_prize_progress, opp_prize_threat,
++    my_deck_ratio, opp_deck_ratio, my_discard_supporters,
++    opp_discard_supporters, my_discard_boss, opp_discard_boss,
++    opp_bench_energy, deck_histogram(16)]``
+     """
+     player = int((observation.get("current") or {}).get("yourIndex", 0))
+     state = _player_state(observation, player)
+     opponent = _player_state(observation, 1 - player)
++    my_prizes = _prize_count(observation, player)
++    opp_prizes = _prize_count(observation, 1 - player)
+     base = np.array(
+         [
+             _active_hp(state),
+@@ -408,6 +479,18 @@ def state_vector(observation: dict, deck: list[int] | None = None) -> np.ndarray
+             _opp_active_energy(opponent),
+             _bench_ratio(observation, player),
+             _bench_ratio(observation, 1 - player),
++            _opp_hand_count(observation, player) / 10.0,
++            my_prizes / 6.0,
++            opp_prizes / 6.0,
++            (6.0 - my_prizes) / 5.0,
++            (6.0 - opp_prizes) / 5.0,
++            _deck_ratio(state),
++            _deck_ratio(opponent),
++            _discard_supporters(observation, player) / 10.0,
++            _discard_supporters(observation, 1 - player) / 10.0,
++            _discard_has(observation, player, BOSS_ORDERS_ID),
++            _discard_has(observation, 1 - player, BOSS_ORDERS_ID),
++            _bench_energy(opponent) / 10.0,
+         ],
+         dtype=np.float32,
+     )

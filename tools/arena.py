@@ -331,6 +331,11 @@ def main() -> int:
     parser.add_argument("--deck1", type=Path, default=None, help="override P1 deck")
     parser.add_argument("--bo3", action="store_true", help="play best-of-three matches")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help="randomise the first-player choice per game with --seed instead of alternating",
+    )
     parser.add_argument("--max-steps", type=int, default=5000)
     parser.add_argument("--reverse", choices=["auto", "p0", "p1"], default="auto",
                         help="who chooses whether to go first (auto alternates)")
@@ -352,7 +357,11 @@ def main() -> int:
 
     for game in range(args.games):
         if args.reverse == "auto":
-            reverse_first = game % 2 == 1
+            if args.shuffle:
+                # Fresh series: coin-flip who chooses the turn order, driven by --seed.
+                reverse_first = rng.random() < 0.5
+            else:
+                reverse_first = game % 2 == 1
         else:
             reverse_first = args.reverse == "p1"
 

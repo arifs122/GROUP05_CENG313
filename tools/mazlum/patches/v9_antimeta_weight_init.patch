@@ -1,0 +1,65 @@
+﻿diff --git a/src/mazlum/train_bc.py b/src/mazlum/train_bc.py
+index 3e0836e..e4f6ad4 100644
+--- a/src/mazlum/train_bc.py
++++ b/src/mazlum/train_bc.py
+@@ -193,6 +193,12 @@ def main() -> int:
+     parser.add_argument("--patience", type=int, default=2, help="arena evaluations without improvement")
+     parser.add_argument("--print-every", type=int, default=5)
+     parser.add_argument("--seed", type=int, default=42)
++    parser.add_argument(
++        "--init",
++        type=Path,
++        default=None,
++        help="initialize the network from an existing model.npz (fine-tuning)",
++    )
+     args = parser.parse_args()
+ 
+     if not args.dataset.is_file():
+@@ -210,12 +216,12 @@ def main() -> int:
+         split = torch.zeros(rows, dtype=torch.int8)
+         print("warning: dataset has no 'split' array; training on all rows")
+ 
+-    if source is None:
+-        weight = torch.ones(rows, dtype=torch.float32)
+-        dagger_rows = 0
+-    else:
+-        dagger_rows = int((source == 1).sum())
+-        weight = torch.where(source == 1, torch.tensor(args.dagger_weight), torch.tensor(1.0))
++    # v11 re├ºetesi: anti-meta (source == 2) sat─▒rlar─▒ 2.0 a─ƒ─▒rl─▒kla ├╢─ƒrenilir.
++    weight = torch.ones(rows, dtype=torch.float32)
++    if source is not None:
++        weight[source == 2] = 2.0
++    dagger_rows = int((source == 1).sum()) if source is not None else 0
++    antimeta_rows = int((source == 2).sum()) if source is not None else 0
+ 
+     train_idx = torch.nonzero(split == 0, as_tuple=False).flatten()
+     val_idx = torch.nonzero(split == 1, as_tuple=False).flatten()
+@@ -228,7 +234,8 @@ def main() -> int:
+     print(f"dataset: {args.dataset}  rows={rows}  episodes={episodes}")
+     print(
+         f"split: train {train_idx.numel()} / val {val_idx.numel()}  "
+-        f"dagger rows {dagger_rows} (weight {args.dagger_weight})"
++        f"dagger rows {dagger_rows} (weight {args.dagger_weight})  "
++        f"anti-meta rows {antimeta_rows} (weight 2.0)"
+     )
+     print(
+         f"model: MazlumNet  Adam(lr={args.lr})  epochs<={args.epochs}  batch={args.batch_size}  "
+@@ -238,6 +245,18 @@ def main() -> int:
+     normalizer = compute_normalizer(state, options, mask, train_idx)
+ 
+     net = M.MazlumNet()
++    if args.init is not None:
++        if not args.init.is_file():
++            print(f"error: init model not found: {args.init}")
++            return 1
++        with np.load(args.init) as init_data:
++            init_state = {
++                name: torch.from_numpy(init_data[name].astype(np.float32))
++                for name in init_data.files
++                if name not in NORMALIZER_KEYS
++            }
++        net.load_state_dict(init_state)
++        print(f"initialized from: {args.init} ({len(init_state)} tensors)")
+     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
+     batch_size = max(1, min(args.batch_size, int(train_idx.numel())))
+     win_rate = build_mini_arena(args.arena_games, CANDIDATE_MODEL) if args.arena_every > 0 else None
