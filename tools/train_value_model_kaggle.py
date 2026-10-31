@@ -50,6 +50,10 @@ FEATURE_NAMES = [
     "hand_dreepy", "hand_drakloak", "hand_dragapult", "hand_budew",
     "active_dragapult", "active_budew", "active_meowth",
     "bench_pokemon", "bench_energy", "bench_tools",
+    "first_player_flag", "opp_seen_total",
+    "opp_seen_boss", "opp_seen_dragapult", "opp_seen_dwebble",
+    "opp_seen_crustle", "opp_seen_lucario", "opp_seen_grimmsnarl",
+    "opp_seen_hydrapple", "opp_seen_starmie", "opp_seen_archaludon",
 ]
 
 
@@ -95,6 +99,40 @@ def is_dragapult(deck):
     return Counter(deck).get(121, 0) >= 2
 
 
+def public_opponent_ids(obs, me):
+    cur = get(obs, "current")
+    players = get(cur, "players", None) or []
+    if len(players) < 2:
+        return set()
+    op = players[1 - me]
+    ids = set()
+
+    def add(card):
+        if not card:
+            return
+        x = cid(card)
+        if x:
+            ids.add(x)
+        for group in ("energyCards", "tools", "preEvolution"):
+            for child in get(card, group, None) or []:
+                add(child)
+
+    for zone in (get(op, "active", None) or [], get(op, "bench", None) or [],
+                 get(op, "discard", None) or []):
+        for card in zone:
+            add(card)
+    for card in get(cur, "stadium", None) or []:
+        if get(card, "playerIndex", -1) != me:
+            add(card)
+    for log in get(obs, "logs", None) or []:
+        if int(get(log, "playerIndex", -1)) == me:
+            continue
+        x = get(log, "cardId", None)
+        if x is not None:
+            ids.add(int(x))
+    return ids
+
+
 def features(obs, me):
     cur = get(obs, "current")
     players = get(cur, "players", None) or []
@@ -131,6 +169,7 @@ def features(obs, me):
     hids = [cid(c) for c in (get(my, "hand", None) or []) if c]
     hand = Counter(hids)
     active_id = cid(ma) if ma else 0
+    seen = public_opponent_ids(obs, me)
     energy_ids = {2, 5, 7, 1, 3, 4, 6, 8, 9, 10, 11, 14, 18, 19}
     supporter_like = {1182, 1198, 1210, 1213, 1227, 1240, 1245, 1205}
     item_like = {1079, 1080, 1086, 1097, 1120, 1121, 1152, 1156, 1256}
@@ -163,6 +202,17 @@ def features(obs, me):
         1.0 if active_id == 235 else 0.0,
         1.0 if active_id == 1071 else 0.0,
         float(myb), float(bench_en), float(bench_tools),
+        1.0 if get(cur, "firstPlayer", None) == me else 0.0,
+        len(seen),
+        1.0 if 1182 in seen else 0.0,
+        1.0 if 121 in seen else 0.0,
+        1.0 if 344 in seen else 0.0,
+        1.0 if 345 in seen else 0.0,
+        1.0 if 678 in seen else 0.0,
+        1.0 if 648 in seen else 0.0,
+        1.0 if 150 in seen else 0.0,
+        1.0 if 1031 in seen else 0.0,
+        1.0 if 169 in seen else 0.0,
     ]]
 
 
@@ -256,16 +306,38 @@ def auc(y, p):
     return float((ranks[pos].sum() - npos * (npos + 1) / 2) / (npos * nneg))
 
 
+def threshold_metrics(y, p, threshold):
+    pred = p >= threshold
+    tp = int(((pred == 1) & (y == 1)).sum())
+    fp = int(((pred == 1) & (y == 0)).sum())
+    tn = int(((pred == 0) & (y == 0)).sum())
+    fn = int(((pred == 0) & (y == 1)).sum())
+    precision = tp / max(1, tp + fp)
+    recall = tp / max(1, tp + fn)
+    f1 = 2 * precision * recall / max(1e-9, precision + recall)
+    return {
+        "threshold": threshold,
+        "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+    }
+
+
 def metrics(y, p):
     p = np.clip(p, 1e-6, 1 - 1e-6)
-    return {
+    out = {
         "n": int(len(y)),
         "base": round(float(y.mean()), 4),
         "logloss": round(float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean()), 4),
         "brier": round(float(((p - y) ** 2).mean()), 4),
         "accuracy": round(float(((p >= 0.5) == y).mean()), 4),
         "auc": round(auc(y, p), 4),
+        "at_0.5": threshold_metrics(y, p, 0.5),
     }
+    best = max((threshold_metrics(y, p, t) for t in (0.25, 0.35, 0.45, 0.55, 0.65)), key=lambda r: r["f1"])
+    out["best_f1"] = best
+    return out
 
 
 def main():
@@ -288,6 +360,17 @@ def main():
     print("test ", metrics(y[te], sigmoid(Xs[te] @ w)))
 
     args.out.mkdir(parents=True, exist_ok=True)
+    report = {
+        "config": vars(args),
+        "states": int(len(y)),
+        "episodes": int(len(set(groups))),
+        "train": metrics(y[tr], sigmoid(Xs[tr] @ w)),
+        "test": metrics(y[te], sigmoid(Xs[te] @ w)),
+    }
+    # Path objects are not JSON serializable.
+    report["config"]["replays"] = str(report["config"]["replays"])
+    report["config"]["out"] = str(report["config"]["out"])
+    (args.out / "value_model_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     payload = {
         "feature_names": FEATURE_NAMES,
         "mean": [float(x) for x in mean],

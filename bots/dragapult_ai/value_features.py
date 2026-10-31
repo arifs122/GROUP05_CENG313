@@ -27,6 +27,10 @@ FEATURE_NAMES = [
     "hand_dreepy", "hand_drakloak", "hand_dragapult", "hand_budew",
     "active_dragapult", "active_budew", "active_meowth",
     "bench_pokemon", "bench_energy", "bench_tools",
+    "first_player_flag", "opp_seen_total",
+    "opp_seen_boss", "opp_seen_dragapult", "opp_seen_dwebble",
+    "opp_seen_crustle", "opp_seen_lucario", "opp_seen_grimmsnarl",
+    "opp_seen_hydrapple", "opp_seen_starmie", "opp_seen_archaludon",
 ]
 
 
@@ -60,6 +64,40 @@ def _pokemon_tools(pokemon):
 
 def _all_pokemon(player):
     return [p for p in (_get(player, "active", None) or []) + (_get(player, "bench", None) or []) if p]
+
+
+def _public_opponent_ids(obs, me: int) -> set[int]:
+    current = _get(obs, "current")
+    players = _get(current, "players", None) or []
+    if len(players) < 2:
+        return set()
+    op = players[1 - me]
+    ids: set[int] = set()
+
+    def add(card):
+        if not card:
+            return
+        cid = _card_id(card)
+        if cid:
+            ids.add(cid)
+        for group in ("energyCards", "tools", "preEvolution"):
+            for child in _get(card, group, None) or []:
+                add(child)
+
+    for zone in (_get(op, "active", None) or [], _get(op, "bench", None) or [],
+                 _get(op, "discard", None) or []):
+        for card in zone:
+            add(card)
+    for card in _get(current, "stadium", None) or []:
+        if _get(card, "playerIndex", -1) != me:
+            add(card)
+    for log in _get(obs, "logs", None) or []:
+        if int(_get(log, "playerIndex", -1)) == me:
+            continue
+        cid = _get(log, "cardId", None)
+        if cid is not None:
+            ids.add(int(cid))
+    return ids
 
 
 def extract(obs, me: int, first_player: int | None = None) -> list[float]:
@@ -98,6 +136,7 @@ def extract(obs, me: int, first_player: int | None = None) -> list[float]:
     hand_ids = [_card_id(c) for c in (_get(my, "hand", None) or []) if c]
     hand = Counter(hand_ids)
     active_id = _card_id(my_active) if my_active else 0
+    seen = _public_opponent_ids(obs, me)
 
     # Small, stable groupings.  Exact card counts are deliberately avoided for
     # most cards to prevent overfitting to one deck list.
@@ -137,5 +176,16 @@ def extract(obs, me: int, first_player: int | None = None) -> list[float]:
         float(len(_get(my, "bench", None) or [])),
         float(my_bench_energy),
         float(my_bench_tools),
+        1.0 if first_player == me else 0.0,
+        len(seen),
+        1.0 if 1182 in seen else 0.0,
+        1.0 if 121 in seen else 0.0,
+        1.0 if 344 in seen else 0.0,
+        1.0 if 345 in seen else 0.0,
+        1.0 if 678 in seen else 0.0,
+        1.0 if 648 in seen else 0.0,
+        1.0 if 150 in seen else 0.0,
+        1.0 if 1031 in seen else 0.0,
+        1.0 if 169 in seen else 0.0,
     ]
     return [float(x) for x in feat]
