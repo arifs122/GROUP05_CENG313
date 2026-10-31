@@ -40,6 +40,8 @@ except Exception:  # noqa: BLE001
     _PRIOR_OK = False
 
 PRIOR_WEIGHT = float(os.environ.get("PTCG_PRIOR_WEIGHT", "5000"))
+PRIOR_MARGIN = float(os.environ.get("PTCG_PRIOR_MARGIN", "0"))
+PRIOR_TIE = float(os.environ.get("PTCG_PRIOR_TIE", "0"))
 _PRIOR = None
 
 # Observation-only logging.  The observer never changes the action returned by
@@ -1401,9 +1403,16 @@ def _policy(obs_dict: dict) -> list[int]:
                          if prior_mask[i] > 0 and scores[i] > UNNECESSARY]
                 if valid:
                     order = sorted(valid, key=lambda i: prior_logits[i], reverse=True)
-                    scores[order[0]] += PRIOR_WEIGHT
-                    if len(order) > 1:
-                        scores[order[1]] += PRIOR_WEIGHT * 0.5
+                    margin = (prior_logits[order[0]] - prior_logits[order[1]]) if len(order) > 1 else 0.0
+                    rule_scores = sorted((scores[i] for i in valid), reverse=True)
+                    rule_gap = (rule_scores[0] - rule_scores[1]) if len(rule_scores) > 1 else 0.0
+                    use_prior = margin >= PRIOR_MARGIN
+                    if PRIOR_TIE > 0 and rule_gap > PRIOR_TIE:
+                        use_prior = False
+                    if use_prior:
+                        scores[order[0]] += PRIOR_WEIGHT
+                        if len(order) > 1:
+                            scores[order[1]] += PRIOR_WEIGHT * 0.5
         except Exception:
             pass
 
