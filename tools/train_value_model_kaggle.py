@@ -288,11 +288,28 @@ def sigmoid(z):
     return 1.0 / (1.0 + np.exp(-np.clip(z, -40, 40)))
 
 
-def fit(X, y, epochs=500, lr=0.3, l2=0.01):
+def fit(X, y, epochs=60, batch_size=2048, lr=0.01, l2=0.001, seed=7):
+    """Mini-batch Adam; never forms the full-dataset gradient."""
+    rng = np.random.default_rng(seed)
     w = np.zeros(X.shape[1], dtype=np.float64)
+    m = np.zeros_like(w)
+    v = np.zeros_like(w)
+    beta1, beta2, eps = 0.9, 0.999, 1e-8
+    t = 0
+    n = len(X)
     for _ in range(epochs):
-        p = sigmoid(X @ w)
-        w -= lr * (X.T @ (p - y) / max(1, len(X)) + l2 * w)
+        order = rng.permutation(n)
+        for start in range(0, n, batch_size):
+            idx = order[start:start + batch_size]
+            xb, yb = X[idx], y[idx]
+            p = sigmoid(xb @ w)
+            grad = xb.T @ (p - yb) / max(1, len(idx)) + l2 * w
+            t += 1
+            m = beta1 * m + (1 - beta1) * grad
+            v = beta2 * v + (1 - beta2) * (grad * grad)
+            mhat = m / (1 - beta1 ** t)
+            vhat = v / (1 - beta2 ** t)
+            w -= lr * mhat / (np.sqrt(vhat) + eps)
     return w
 
 
@@ -346,16 +363,26 @@ def main():
     parser.add_argument("--out", type=Path, default=Path("/kaggle/working"))
     parser.add_argument("--stride", type=int, default=4)
     parser.add_argument("--max-episodes", type=int, default=200)
-    parser.add_argument("--epochs", type=int, default=300)
+    parser.add_argument("--epochs", type=int, default=60)
+    parser.add_argument("--batch-size", type=int, default=2048)
+    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--l2", type=float, default=0.001)
+    parser.add_argument("--max-states", type=int, default=400000)
     args = parser.parse_args()
     X, y, groups = load_states(args.replays, max(1, args.stride), args.max_episodes)
     if not len(X):
         raise SystemExit("no Dragapult states found")
+    if args.max_states and len(X) > args.max_states:
+        idx = random.Random(7).sample(range(len(X)), args.max_states)
+        X = [X[i] for i in idx]
+        y = [y[i] for i in idx]
+        groups = [groups[i] for i in idx]
     print("states", X.shape, "episodes", len(set(groups)), "positive", round(float(y.mean()), 4))
     tr, te = split(groups)
     mean = X[tr].mean(0); std = X[tr].std(0); std[std < 1e-8] = 1.0
     Xs = (X - mean) / std
-    w = fit(Xs[tr], y[tr], epochs=args.epochs)
+    w = fit(Xs[tr], y[tr], epochs=args.epochs, batch_size=args.batch_size,
+             lr=args.lr, l2=args.l2)
     print("train", metrics(y[tr], sigmoid(Xs[tr] @ w)))
     print("test ", metrics(y[te], sigmoid(Xs[te] @ w)))
 
