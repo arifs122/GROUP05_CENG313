@@ -42,6 +42,7 @@ except Exception:  # noqa: BLE001
 PRIOR_WEIGHT = float(os.environ.get("PTCG_PRIOR_WEIGHT", "5000"))
 PRIOR_MARGIN = float(os.environ.get("PTCG_PRIOR_MARGIN", "0"))
 PRIOR_TIE = float(os.environ.get("PTCG_PRIOR_TIE", "0"))
+PRIOR_ARCH_ALLOW = {x.strip() for x in os.environ.get("PTCG_PRIOR_ARCH", "mega_lucario,grimmsnarl").split(",") if x.strip()}
 _PRIOR = None
 
 # Observation-only logging.  The observer never changes the action returned by
@@ -592,6 +593,10 @@ def _prior_logits(obs_dict: dict):
             return None
         if int(select.get("context", -1)) != 0 or int(select.get("maxCount", 0)) != 1:
             return None
+        if PRIOR_ARCH_ALLOW and _BELIEF is not None:
+            best = ((getattr(_BELIEF, "snapshot_data", {}) or {}).get("op", {}) or {}).get("best")
+            if best not in PRIOR_ARCH_ALLOW:
+                return None
         if _PRIOR is None:
             candidates = []
             if "__file__" in globals():
