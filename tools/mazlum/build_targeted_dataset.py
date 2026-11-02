@@ -18,9 +18,10 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
-for path in (ROOT / "src" / "mazlum",):
-    if str(path) not in sys.path:
+ROOT = Path(__file__).resolve().parents[2]
+_SEARCH = [ROOT / "src" / "mazlum", Path(__file__).resolve().parents[1] / "src" / "mazlum"]
+for path in _SEARCH:
+    if (path / "features.py").is_file() and str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
 import features as F  # noqa: E402
@@ -39,16 +40,33 @@ def main() -> int:
     parser.add_argument("--replays", type=Path, default=DEFAULT_REPLAYS)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--capacity", type=int, default=400_000)
+    parser.add_argument("--episode-ids", type=Path, default=None,
+                        help="JSON list of episode ids to include (overrides the pair filter)")
+    parser.add_argument("--archetype", default=None, help="require this archetype in the episode")
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-    episodes = [
-        e for e in manifest.get("episodes") or []
-        if e.get("file") and PAIR <= set(e.get("archetypes") or [])
-    ]
-    print(f"pair episodes: {len(episodes)}", flush=True)
+    wanted = None
+    if args.episode_ids is not None:
+        wanted = {int(x) for x in json.loads(args.episode_ids.read_text(encoding="utf-8"))}
+        print(f"episode-id filter: {len(wanted)} ids", flush=True)
+
+    episodes = []
+    for e in manifest.get("episodes") or []:
+        if not e.get("file"):
+            continue
+        arch = set(e.get("archetypes") or [])
+        if wanted is not None:
+            if int(e["episode_id"]) not in wanted:
+                continue
+        elif not (PAIR <= arch):
+            continue
+        if args.archetype and args.archetype not in arch:
+            continue
+        episodes.append(e)
+    print(f"selected episodes: {len(episodes)}", flush=True)
 
     cap = args.capacity
     states = np.empty((cap, F.STATE_FEATURE_SIZE), dtype=np.float16)

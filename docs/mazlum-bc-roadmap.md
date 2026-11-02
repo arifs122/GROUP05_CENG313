@@ -636,6 +636,23 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
 - Paket: `submissions/mazlum_v15_banette.tar.gz` — **2,56 MiB**, içindeki
   `model.npz` epoch_009 ile birebir (SHA eşleşti), izole dizinde 20/20.
 
+### v16 — Kaggle meta madenciliği (özeleştiri fine-tune)
+
+- Kaynak: kendi submission'larımız (57835594 Banette dönemi + 57643520
+  Dragapult dönemi) → **637 yeni episode** indirildi (+246 / +391).
+- Veri: `dataset_v16_kaggle_meta.npz` — 637 episode, **198.661 satır**
+  (154.808 train / 43.853 val), 37-dim. Val top-1 %63,90 → %65,56 (ep5).
+- Fine-tune: v15 ağırlıklarından, lr 1e-4, 10 epoch, her epoch checkpoint.
+- Checkpoint taraması (Dragapult, 200 maç): en iyi ep2/ep8 **%50,5**;
+  ep3 %40,0, ep7 %38,5. v15'in %56,0'ının altında.
+- Final batarya (ep8, 500 maç): **Banette %91,0 · Dragapult %47,8 ·
+  Lucario %75,0** — üçü de v15'in altında (−5,2 / −8,2 / −2,8 pp).
+- Sonuç: **v16 reddedildi.** Kendi Kaggle maçlarımızdan öğrenmek, modeli
+  kendi dağılımına çekip hedefli uzmanlıkları (Dragapult savunması, ayna)
+  seyreltti. İlk epoch'ta bile Dragapult %46'ya düştü → dağılım kayması
+  hızlı ve geri dönüşsüz. Şampiyon **v15** kalıyor.
+
+
 
 
 
