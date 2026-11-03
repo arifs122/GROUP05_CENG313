@@ -652,6 +652,28 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
   seyreltti. İlk epoch'ta bile Dragapult %46'ya düştü → dağılım kayması
   hızlı ve geri dönüşsüz. Şampiyon **v15** kalıyor.
 
+### v17 — Hedefli veriyi dikey ölçekleme (1.705 episode)
+
+- Madencilik: yalnızca Banette oynayan submission'lar, 300 episode/sub,
+  420 dk bütçe. **881 → 1.705** Banette-vs-Dragapult episode (+824).
+  Kaggle 429 kotası nedeniyle 2.000'e ulaşılamadı (9,4 saat, 520 adet 429).
+- Veri: `dataset_v17_dragapult_massive.npz` — **671.486 satır**
+  (539.258 train / 132.228 val), 37-dim, 25,8 MB.
+- Eğitim: v13 ağırlıklarından, lr 1e-4, 15 epoch (12 + kaldığı yerden 3),
+  checkpoint'li. Val top-1 %58,27 → **%59,52** (epoch 12'den sonra plato).
+- Tarama (15 checkpoint × 200 maç Dragapult): zirve **epoch_006 %60,0**;
+  6 checkpoint %57,5-60 bandında (v15'te 2 taneydi).
+- Doğrulama ve batarya:
+  - 1.000 maç (seed 777): **%57,7** (v15: %55,6)
+  - Batarya (500, seed 1234): Banette **%96,2** · Dragapult **%52,4** ·
+    Lucario **%75,8**
+  - Birleşik Dragapult (1.500 maç): v15 **%55,7** vs v17 **%55,9** →
+    **fark yok** (0,2 pp).
+- Sonuç: hedefli veriyi 806 → 1.705 episode'a çıkarmak **ölçülebilir
+  kazanç getirmedi**. Veri ölçeği bu mimaride doygunluğa ulaştı; ayna
+  korunuyor (%96,2), Lucario hafif düşük (farksız). Şampiyon **v15**.
+
+
 
 
 

@@ -42,6 +42,8 @@ def main() -> int:
     parser.add_argument("--teams", type=int, default=563)
     parser.add_argument("--subs-per-team", type=int, default=8)
     parser.add_argument("--max-per-submission", type=int, default=60)
+    parser.add_argument("--only-sub-archetype", default=None,
+                        help="only scan submissions whose deck contains this archetype")
     parser.add_argument("--delay", type=float, default=0.8)
     parser.add_argument("--list-delay", type=float, default=0.3)
     args = parser.parse_args()
@@ -100,6 +102,8 @@ def main() -> int:
                 probes += 1
 
             if not (set(archetypes) & PAIR):
+                continue
+            if args.only_sub_archetype and args.only_sub_archetype not in archetypes:
                 continue
 
             todo = [int(row["id"]) for row in episodes if int(row["id"]) not in kept][: args.max_per_submission]
