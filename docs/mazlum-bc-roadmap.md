@@ -673,6 +673,27 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
   kazanç getirmedi**. Veri ölçeği bu mimaride doygunluğa ulaştı; ayna
   korunuyor (%96,2), Lucario hafif düşük (farksız). Şampiyon **v15**.
 
+### v18 — Akıllı Kaggle meta (yalnızca kazanılan maçlar)
+
+- Çekim: son submission (57957138, v15) → 132 episode, 127 indirildi;
+  bunlardan 60'ı galibiyet (%47,2 — yüksek Elo duvarı).
+- Filtre: **yalnızca Banette'in kazandığı** maçlar + leaderboard ilk 200
+  takımın Banette zaferleri. 1.174 mağlubiyet dışlandı.
+- Seçilen: **1.894 episode** (60 bizim + 1.834 üst takımlar). Rakipler:
+  Dragapult 910, Alakazam 268, Festival Lead 186, Banette 150, Hydrapple 148.
+- Veri: `dataset_v18_kaggle_smart.npz` — **732.194 satır**
+  (590.075 train / 142.119 val), 37-dim.
+- Eğitim: v15 ağırlıklarından, lr 1e-4, 10 epoch. Val top-1
+  %59,74 → **%60,04** (ep5) → %59,93.
+- Tarama (10 checkpoint × 200): en iyi **epoch_007 %56,5**.
+- Batarya (500): **Banette %96,0 · Dragapult %50,6 · Lucario %78,2**
+  (v15: %96,2 · %56,0 · %77,8).
+- Sonuç: ayna korundu (+0,0), Lucario sınırda iyileşti (+0,4, anlamsız),
+  ama **Dragapult −5,4 pp**. Kazanılan-maç filtresi de v16/v17 desenini
+  değiştirmedi: kendi/Kaggle dağılımından fine-tune, yerel heuristiğe
+  karşı öğrenilmiş Dragapult uzmanlığını seyreltiyor. Şampiyon **v15**.
+
+
 
 
 
