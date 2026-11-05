@@ -111,10 +111,32 @@ Yani v24'ün "8 → 27" ekran farkı **seed gürültüsü**. Bundan sonra:
 - ep10 / ep25 / ep40, 300 maç Dragapult (seed 777). Taban %14,3.
 - Script: `tools/mazlum/v27_run.ps1`.
 
-### S1e — Genel güç karşılaştırması (çalışıyor)
+### S1e — Genel güç karşılaştırması (bitti)
 
-- v22 ep23 ve v26 ep30, Banette botuna karşı 300 maç (seed 777).
-- Script: `tools/mazlum/slowking_banette_cmp.ps1`.
+- Banette botuna karşı 300 maç (seed 777): v22 **%52,7** · v26 **%53,7**.
+- Yani iki model de Banette'e karşı ~%53, Dragapult'a karşı ~%14.
+- Tablo: Slowking politikası Banette seviyesinde oynuyor; sorun **Dragapult
+  eşleşmesine özel** (insan Slowking pilotları Dragapult'a %44 kazanıyor).
+- Not: %2 civarı `max_steps` draw var (Kaggle'da draw).
+
+### İnsan replay denetimi (198 Slowking-vs-Dragapult maçı)
+
+| | Kazanan (87) | Kaybeden (111) |
+|---|---:|---:|
+| Clefairy oynandı | %66 | **%83** |
+| Clefairy saldırdı | %44 | %37 |
+| **Smoochum saldırdı** | **%75** | **%75** |
+| Kyurem saldırdı | %0 | %0 |
+| Ortalama tur | 13 | 13 |
+
+- Clefairy oynamak **kazanmayla ilişkili değil** (kaybedenlerde daha yüksek!).
+- Asıl motor: **Smoochum "Delightful Kiss"** (2 Psychic Energy'yi yedeğe
+  bağlar) — insanların %75'inde kullanılıyor, bizim ajanda %20.
+- Slowking "Seek Inspiration" (213) bu enerjiyle Kyurem Trifrost / Clefairy
+  Rondo kopyalıyor.
+- **Kural testi:** Smoochum saldırısını zorla → **%13,0** (taban %14,7).
+  Yine negatif: tek tek hamleleri zorlamak planı kurmuyor.
+- Araç: `tools/mazlum/slowking_matchup_audit.py`.
 
 ### Karar ağacı (kullanıcı dönünce)
 

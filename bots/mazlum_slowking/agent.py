@@ -130,8 +130,10 @@ class MazlumPolicy:
         self.use_lethal = True
         self.lethal_overrides = 0
         self.tech_overrides = 0
+        self.engine_overrides = 0
         # Off by default: forcing Clefairy tested 3/40 vs 6/30 baseline (no gain).
         self.use_tech_rule = os.environ.get("MAZLUM_TECH_RULE", "0") == "1"
+        self.use_engine_rule = os.environ.get("MAZLUM_ENGINE_RULE", "0") == "1"
 
     # -- forward pass ------------------------------------------------------
     @staticmethod
@@ -270,6 +272,14 @@ class MazlumPolicy:
                 _trace_decision(obs_dict, select, options, [tech])
                 return [tech]
 
+        # Engine rule: always fire Smoochum's Delightful Kiss (energy acceleration).
+        if count == 1:
+            engine = self._engine_override(options)
+            if engine is not None:
+                self.engine_overrides += 1
+                _trace_decision(obs_dict, select, options, [engine])
+                return [engine]
+
         # Hybrid policy: a legal lethal attack overrides the network entirely.
         if count == 1 and self.use_lethal:
             lethal = (option_matrix[:, self.lethal_index] > 0.5) & (mask > 0)
@@ -296,6 +306,21 @@ class MazlumPolicy:
                     break
         _trace_decision(obs_dict, select, options, chosen)
         return chosen[:max_count]
+
+    def _engine_override(self, options: list) -> int | None:
+        """Engine rule: use Smoochum's Delightful Kiss (2 Psychic Energy to bench).
+
+        Human top-20 pilots fire this in ~75% of Slowking games; the BC policy
+        only in ~20%, which starves the Slowking/Kyurem plan of energy.
+        """
+        if not self.use_engine_rule:
+            return None
+        for index, opt in enumerate(options):
+            if int(opt.get("type", -1)) != 13:
+                continue
+            if int(opt.get("attackId") or -1) == 242:
+                return index
+        return None
 
     def _tech_override(self, obs_dict: dict, options: list) -> int | None:
         """Deck rule: play Lillie's Clefairy ex vs a Dragon Active.
