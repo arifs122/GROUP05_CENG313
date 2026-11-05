@@ -180,7 +180,10 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
 
 - 296k parametre, 85.950 satır: **%20,0** — şimdiye kadarki en iyi Slowking
   (taban %14,3–14,7). 40 epoch'ta val eğrisi bozuluyor; doğru yer ~ep25.
-- Banette karşılaştırması ayrıca koşuluyor.
+- **Genel güç:** Banette'e **%61,7** (v26 %53,7 · v22 %52,7) → sadece
+  Dragapult'a değil, genel olarak da en iyi Slowking.
+- **v31 (çalışıyor):** aynı büyük model, tam veri (168.720 satır, iki taraf),
+  lr 2e-4, 6 epoch; ep3/ep6 × 300 maç. Kapasite + daha fazla veri.
 
 ### S1h — v30: genelist→uzman devam (çalışıyor)
 
