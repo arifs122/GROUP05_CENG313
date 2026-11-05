@@ -138,6 +138,13 @@ Yani v24'ün "8 → 27" ekran farkı **seed gürültüsü**. Bundan sonra:
   Yine negatif: tek tek hamleleri zorlamak planı kurmuyor.
 - Araç: `tools/mazlum/slowking_matchup_audit.py`.
 
+### S1f — v28: kazanan maç ağırlıklandırma (çalışıyor)
+
+- v26 verisi + Slowking'in Dragapult'u **yendiği** 87 maçın satırları 3×
+  (12.006 satır → +24.012) = 109.962 satır.
+- v26 ep30'dan, lr 5e-5, 6 epoch; ep6, 300 maç Dragapult (seed 777).
+- Script: `tools/mazlum/v28_run.ps1`.
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.
