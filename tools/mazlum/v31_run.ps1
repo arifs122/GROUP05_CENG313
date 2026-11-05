@@ -15,7 +15,7 @@ function Step([string]$name) {
 
 Step "train v31 from v27 ep25 on full Slowking data (6 epochs, lr 2e-4)"
 python -u src/mazlum/train_bc.py --dataset data/mazlum/dataset_v22_slowking.npz `
-  --init data/mazlum/v27_epochs/epoch_025.npz --out data/mazlum/model_v31_big_full.npz `
+  --arch big --init data/mazlum/v27_epochs/epoch_025.npz --out data/mazlum/model_v31_big_full.npz `
   --epochs 6 --lr 2e-4 --batch-size 64 --arena-every 0 --print-every 1 `
   --save-each data/mazlum/v31_epochs *>&1 | Tee-Object -FilePath $log -Append
 

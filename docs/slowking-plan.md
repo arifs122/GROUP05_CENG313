@@ -191,12 +191,12 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
 - Amaç: %17,7'nin üstüne çıkıyor mu, yoksa plato mu?
 - Script: `tools/mazlum/v30_run.ps1`.
 
-### Fikir: iki modelin logit ortalaması (ensemble)
+### Ensemble (uygulandı, test ediliyor)
 
-- v27 ep25 (big, %20,0) + v30'un en iyi checkpoint'i (small, ~%18) aynı
-  özellikleri tüketiyor; ajan iki model yükleyip logit ortalaması alabilir.
-- Beklenen: +2–5 pp; maliyet: karar başına 2× çıkarım (NumPy, önemsiz) ve
-  paket boyutu +0,5 MB. Ladder'a çıkmadan önce denenebilir.
+- `bots/mazlum_slowking/agent.py`: `MAZLUM_MODEL2` ile ikinci model yüklenir,
+  logitler 0,5–0,5 ortalanır. Paket boyutu +~0,5 MB.
+- Test: v27 ep25 (big, %20,0) + v30 ep20 (small, —) → 300 maç Dragapult.
+- Beklenen: +2–5 pp. Sonuç gelince tek model mi, ensemble mı kararı verilir.
 
 ### Karar ağacı (kullanıcı dönünce)
 

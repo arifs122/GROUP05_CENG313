@@ -112,6 +112,7 @@ class MazlumPolicy:
         self.features = features_module
         self.deck = list(deck)
         self.model_path = model_path
+        self.second = None
         self.lethal_index = features_module.OPTION_FEATURE_NAMES.index("attack_lethal")
 
         self.is_big = "blocks.0.q.weight" in self.weights
@@ -259,6 +260,9 @@ class MazlumPolicy:
         card_ids = self.features.card_ids_matrix(obs_dict)
 
         logits = self.logits(state, option_matrix, card_ids, mask)
+        if self.second is not None:
+            other = self.second.logits(state, option_matrix, card_ids, mask)
+            logits = 0.5 * (logits + other)
         logits = np.where(mask == 0, NEG_INF, logits)
 
         count = max(1, min_count)
@@ -410,6 +414,12 @@ def get_policy() -> MazlumPolicy:
                 f"Searched:\n  {searched}"
             )
         _POLICY = MazlumPolicy(model_path, _import_features(), load_deck())
+    if _POLICY.second is None:
+        extra = os.environ.get("MAZLUM_MODEL2", "").strip()
+        if extra:
+            extra_path = Path(extra)
+            if extra_path.is_file():
+                _POLICY.second = MazlumPolicy(extra_path, _import_features(), load_deck())
     return _POLICY
 
 
