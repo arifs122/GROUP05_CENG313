@@ -59,11 +59,30 @@ seviyesi**.
 
 ## 4. Fazlar
 
-### S1 — Hard-matchup fine-tune (v24, çalışıyor)
+### S1 — Hard-matchup fine-tune (v24, bitti)
+
 - Veri: Slowking vs **Dragapult + Alakazam**, 267 episode → 90.953 satır.
 - v22 ep23'ten fine-tune, lr 1e-4, 6 epoch, her epoch checkpoint.
-- Kapı: vs Dragapult > taban (20) ve tercihen ≥ %30; vs Banette ≥ %50.
+- **Sonuç (aynı seed 2024):** kontrol v22 ep23 **%8** → v24 ep2/ep3 **%27**
+  (+19 pp). Epoch kuyruğu: 21 / 27 / 27 / 18 / 14 / 17.
+- Banette (100 maç): **%59** (v22 %55).
+- Not: aynı modelin seed'ler arası oynaması büyük (v22: seed 2024 %8,
+  seed 4242 %20) → 100 maçlık farklar gürültülü; kararlar 300 maçla verilecek.
 - Script: `tools/mazlum/v24_run.ps1`.
+
+### S1b — v25: karışık fine-tune (çalışıyor)
+
+- Veri: tam veri (168.720) + zor eşleşme (90.953) = **259.673 satır**
+  (zor satırlar 2× ağırlıkta).
+- v24 ep2'den, lr 5e-5, 4 epoch.
+- Amaç: Dragapult kazancını korurken diğer eşleşmeleri kaybetmemek.
+- Önce 300 maçlık doğrulama: v22 vs v24 ep2 (seed 777).
+- Script: `tools/mazlum/v25_run.ps1`.
+
+### Ladder uyarısı
+
+- v22 aktif kaldıkça skor erimeye devam ediyor: 600,0 → **553,4** (sıra 414).
+- v21 restore (939) kullanıcı onayı bekliyor; kota açık (6 Kasım).
 
 ### S2 — Veri genişletme
 - Hedef: 800+ Slowking episode (şu an 513). Madencilik 429'a takılıyor;
