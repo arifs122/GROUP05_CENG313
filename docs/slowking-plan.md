@@ -145,6 +145,29 @@ Yani v24'ün "8 → 27" ekran farkı **seed gürültüsü**. Bundan sonra:
 - v26 ep30'dan, lr 5e-5, 6 epoch; ep6, 300 maç Dragapult (seed 777).
 - Script: `tools/mazlum/v28_run.ps1`.
 
+### Kayıp nedeni dağılımı (40 maç vs Dragapult botu)
+
+Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
+1 = 0 prize (tüm ödüller alındı) · 2 = deste bitti · 3 = aktifte Pokémon yok
+(bench-out) · 4 = kart etkisi.
+
+| reason | Maç | Yorum |
+|---|---:|---|
+| 1 (prize) | 34 | Normal prize yarışı kaybı |
+| 3 (bench-out) | 6 | Yedek Pokémon bitmesi |
+
+- Yani kayıpların **%85'i prize yarışı**, %15'i bench-out. Deste bitişi yok.
+- Bench-out, Dragapult'un Trifrost yayılımına karşı korunmasız kalmaktan;
+  tek başına düzeltilse bile kazanç ~5-7 pp ile sınırlı.
+
+### S1g — v29: generalist → specialist (çalışıyor)
+
+- Yazının tarifi: önce genelist, sonra deste uzmanı. Biz Slowking'i hep
+  **sıfırdan** eğittik; bu ilk kez çok-deste genelistinden (`model_v14b_multi`)
+  Slowking verisine fine-tune.
+- 10 epoch, lr 1e-4; ep5 ve ep10, 300 maç Dragapult (seed 777). Taban %14,7.
+- Script: `tools/mazlum/v29_run.ps1`.
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.
