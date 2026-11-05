@@ -166,7 +166,15 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
   **sıfırdan** eğittik; bu ilk kez çok-deste genelistinden (`model_v14b_multi`)
   Slowking verisine fine-tune.
 - 10 epoch, lr 1e-4; ep5 ve ep10, 300 maç Dragapult (seed 777). Taban %14,7.
+- **Sonuç:** ep5 **%11,0** → ep10 **%17,7** (val hâlâ iyileşiyor: 61,64).
+  İlk kez eğitim uzadıkça yükselen bir eğri var; 10 epoch erken kesmiş.
 - Script: `tools/mazlum/v29_run.ps1`.
+
+### S1h — v30: genelist→uzman devam (çalışıyor)
+
+- v29 ep10'dan 20 epoch daha (lr 5e-5), ep5/10/15/20 × 300 maç Dragapult.
+- Amaç: %17,7'nin üstüne çıkıyor mu, yoksa plato mu?
+- Script: `tools/mazlum/v30_run.ps1`.
 
 ### Karar ağacı (kullanıcı dönünce)
 
