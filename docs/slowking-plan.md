@@ -195,8 +195,16 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
 
 - `bots/mazlum_slowking/agent.py`: `MAZLUM_MODEL2` ile ikinci model yüklenir,
   logitler 0,5–0,5 ortalanır. Paket boyutu +~0,5 MB.
-- Test: v27 ep25 (big, %20,0) + v30 ep20 (small, —) → 300 maç Dragapult.
-- Beklenen: +2–5 pp. Sonuç gelince tek model mi, ensemble mı kararı verilir.
+- Test: v27 ep25 (big) + v30 ep20 (small) → 300 maç Dragapult: **%17,0**
+  (tek v27: %20,0). **Ensemble işe yaramadı**; v30 daha zayıf olduğu için
+  ortalamayı aşağı çekiyor. Tek model kullanılacak.
+
+### Paket (hazır, gönderilmedi)
+
+- `submissions/mazlum_v27_slowking.tar.gz` — 3,10 MiB
+- model sha `d7437c8f` = v27 ep25 · state_proj (80,37) · 86 tensor
+- deste: Slowking 60/60 doğrulandı · şampiyon v15 yerinde
+- A/B planı: önce v21 restore (939), sonra bu paket; 24 saat sonra karşılaştır.
 
 ### Karar ağacı (kullanıcı dönünce)
 
