@@ -70,7 +70,20 @@ seviyesi**.
   seed 4242 %20) → 100 maçlık farklar gürültülü; kararlar 300 maçla verilecek.
 - Script: `tools/mazlum/v24_run.ps1`.
 
-### S1b — v25: karışık fine-tune (çalışıyor)
+### ⚠️ Metodoloji düzeltmesi (6 Kasım)
+
+300 maçlık doğrulama, 100 maçlık taramaların yanıltıcı olduğunu gösterdi:
+
+| vs Dragapult (300 maç, seed 777) | Galibiyet |
+|---|---:|
+| v22 ep23 (taban) | %14,3 |
+| v24 ep2 | %15,0 |
+
+Yani v24'ün "8 → 27" ekran farkı **seed gürültüsü**. Bundan sonra:
+- Ekranlar 300 maç, karşılaştırmalar **aynı seed** ile.
+- 100 maçlık farklara karar bağlanmaz (±5 pp).
+
+### S1b — v25: karışık fine-tune (bitti, şüpheli)
 
 - Veri: tam veri (168.720) + zor eşleşme (90.953) = **259.673 satır**
   (zor satırlar 2× ağırlıkta).
@@ -78,6 +91,17 @@ seviyesi**.
 - Amaç: Dragapult kazancını korurken diğer eşleşmeleri kaybetmemek.
 - Önce 300 maçlık doğrulama: v22 vs v24 ep2 (seed 777).
 - Script: `tools/mazlum/v25_run.ps1`.
+
+### S1c — v26: yalnız Slowking tarafı (çalışıyor)
+
+- **Kök sorun hipotezi:** v22 verisinin yarısı rakibin kararları
+  (168.720 satırın 85.950'si Slowking tarafı). Ajan hem Slowking'i hem
+  rakip desteleri taklit ediyor → politika çakışması.
+- v26 veri: 513 episode, **yalnız Slowking oyuncusunun kararları**
+  (85.950 satır, 410 train / 103 val episode).
+- Sıfırdan, 30 epoch, lr 1e-3; en iyi val ve son epoch 300 maçla
+  Dragapult'a karşı (seed 777) test ediliyor. Taban: %14,3.
+- Script: `tools/mazlum/v26_run.ps1`.
 
 ### Ladder uyarısı
 
