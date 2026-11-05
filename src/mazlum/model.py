@@ -177,6 +177,132 @@ class MazlumNet(nn.Module):
         return logits
 
 
+class AttentionBlock(nn.Module):
+    """Pre-LN multi-head attention readout + Pre-LN residual FFN (v12.3 style)."""
+
+    def __init__(self, dim: int, heads: int, ffn_dim: int) -> None:
+        super().__init__()
+        self.ln_q = nn.LayerNorm(dim, eps=1e-5)
+        self.ln_1 = nn.LayerNorm(dim, eps=1e-5)
+        self.q = nn.Linear(dim, dim)
+        self.k = nn.Linear(dim, dim)
+        self.v = nn.Linear(dim, dim)
+        self.o = nn.Linear(dim, dim)
+        self.ln_2 = nn.LayerNorm(dim, eps=1e-5)
+        self.ffn = nn.Sequential(
+            nn.Linear(dim, ffn_dim),
+            nn.ReLU(),
+            nn.Linear(ffn_dim, dim),
+        )
+
+
+class MazlumNetBig(nn.Module):
+    """v12.3 "big brain": 4 Pre-LN blocks x 4 heads (d=80) over the 37-dim state.
+
+    Same residual readout as the Dragapult-era architecture (Pre-LN fixed the
+    deep residual stack), but the state input is the v13 feature vector.
+    """
+
+    def __init__(
+        self,
+        state_dim: int = STATE_FEATURE_SIZE,
+        option_dim: int = OPTION_FEATURE_SIZE,
+        embed_dim: int = 32,
+        attn_dim: int = 80,
+        heads: int = 4,
+        blocks: int = 4,
+        ffn_dim: int = 144,
+        hidden: int = 128,
+        card_vocab: int = CARD_ID_LIMIT,
+    ) -> None:
+        super().__init__()
+        self.attn_dim = attn_dim
+        self.heads = heads
+        self.head_dim = attn_dim // heads
+
+        self.card_embedding = nn.Embedding(card_vocab, embed_dim, padding_idx=0)
+        self.state_proj = nn.Linear(state_dim, attn_dim)
+        self.option_proj = nn.Linear(option_dim + 2 * embed_dim, attn_dim)
+        self.blocks = nn.ModuleList(
+            AttentionBlock(attn_dim, heads, ffn_dim) for _ in range(blocks)
+        )
+        self.head = nn.Sequential(
+            nn.Linear(2 * attn_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, 1),
+        )
+
+    def _attention(
+        self,
+        query: torch.Tensor,
+        keys: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor | None,
+    ) -> torch.Tensor:
+        q = _split_heads(query.unsqueeze(1), self.heads)
+        k = _split_heads(keys, self.heads)
+        v = _split_heads(values, self.heads)
+
+        scores = torch.matmul(q, k.transpose(-1, -2)).squeeze(-2)
+        scores = scores / math.sqrt(self.head_dim)
+        if mask is not None:
+            scores = mask_logits(scores, mask.unsqueeze(1))
+        attention = torch.softmax(scores, dim=-1)
+
+        context = torch.matmul(attention.unsqueeze(-2), v).squeeze(-2)
+        return context.reshape(context.size(0), self.attn_dim)
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        options: torch.Tensor,
+        card_ids: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if state.dim() == 1:
+            state = state.unsqueeze(0)
+        if options.dim() == 2:
+            options = options.unsqueeze(0)
+        if card_ids is not None and card_ids.dim() == 2:
+            card_ids = card_ids.unsqueeze(0)
+        if mask is not None and mask.dim() == 1:
+            mask = mask.unsqueeze(0)
+
+        if card_ids is None:
+            card_ids = torch.zeros(
+                (options.shape[0], options.shape[1], 2),
+                dtype=torch.long,
+                device=options.device,
+            )
+        card_ids = card_ids.to(dtype=torch.long, device=options.device)
+
+        actor_emb = self.card_embedding(card_ids[..., 0])
+        target_emb = self.card_embedding(card_ids[..., 1])
+        option_input = torch.cat([options, actor_emb, target_emb], dim=-1)
+
+        tokens = self.option_proj(option_input)
+        state_token = self.state_proj(state)
+        carry = torch.zeros_like(state_token)
+
+        for block in self.blocks:
+            token_norm = block.ln_1(tokens)
+            query = block.q(block.ln_q(state_token + carry))
+            context = self._attention(
+                query,
+                block.k(token_norm),
+                block.v(token_norm),
+                mask,
+            )
+            carry = carry + block.o(context)
+            tokens = tokens + block.ffn(block.ln_2(tokens))
+
+        joint = torch.cat([tokens, carry.unsqueeze(1).expand(-1, tokens.size(1), -1)], dim=-1)
+        logits = self.head(joint).squeeze(-1)
+        if mask is not None:
+            logits = mask_logits(logits, mask)
+        return logits
+
+
 def masked_cross_entropy(
     logits: torch.Tensor,
     labels: torch.Tensor,

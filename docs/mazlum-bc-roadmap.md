@@ -693,6 +693,26 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
   değiştirmedi: kendi/Kaggle dağılımından fine-tune, yerel heuristiğe
   karşı öğrenilmiş Dragapult uzmanlığını seyreltiyor. Şampiyon **v15**.
 
+### v19 — "Büyük Beyin" (4×4×80 Pre-LN, 37-dim, cold start)
+
+- Mimari: v12.3'ün Pre-LN gövdesi **37-dim** state ile birleştirildi
+  (`MazlumNetBig`): 4 blok × 4 baş, d=80, FFN 144, head 160→128→1.
+  **296.449 parametre** (v15'in 2,0 katı).
+- Boyut: FP16 **549-553 KB** (< 600 KB), FP32 1.071 KB. NumPy↔Torch
+  farkı 8,9e-8; ajan iki mimariyi de anahtarlardan otomatik tanıyor.
+- Eğitim: `dataset_v17` (671.486 satır), **sıfırdan**, lr 3e-4, 15 epoch,
+  her epoch fp16 checkpoint. Val top-1 %56,43 → **%59,86** (ep12) →
+  %59,58; train %64,05.
+- Tarama (15 × 200 Dragapult): zirve **ep14 %64,0** (v15: %60,5).
+- Batarya (ep14, 500): **Banette %94,0 · Dragapult %59,8 · Lucario %74,0**.
+- 1.000 maç doğrulama (seed 777): Dragapult **%56,3**, ayna **%93,3**.
+- Havuzlanmış (1.500 maç): Dragapult **v19 %57,5 vs v15 %55,7**
+  (+1,8 pp, 1,0σ → anlamsız); ayna **%93,5 vs %95,3** (−1,8 pp, ~2,1σ).
+- Sonuç: kapasite artışı Dragapult'ta **yön olarak olumlu ama anlamsız**,
+  aynada ise **ölçülebilir küçük kayıp**. Karar kuralı (Dragapult ≥%58 ve
+  ayna ≥%94) sağlanmadı → **v15 şampiyon**. v19 arşivde.
+
+
 
 
 

@@ -139,10 +139,18 @@ def evaluate(net, state, options, card_ids, mask, label, normalizer, index=None)
     return total_loss / max(1, rows), correct / max(1, rows)
 
 
-def save_numpy(net, normalizer, path: Path) -> dict[str, np.ndarray]:
+def save_numpy(net, normalizer, path: Path, fp16: bool = False) -> dict[str, np.ndarray]:
     """Convert ``state_dict`` + normaliser tensors to NumPy and store them."""
-    arrays = {name: tensor.detach().cpu().numpy() for name, tensor in net.state_dict().items()}
-    arrays.update({name: tensor.detach().cpu().numpy() for name, tensor in normalizer.items()})
+    dtype = np.float16 if fp16 else np.float32
+    arrays = {
+        name: tensor.detach().cpu().numpy().astype(dtype)
+        for name, tensor in net.state_dict().items()
+    }
+    arrays.update(
+        {name: tensor.detach().cpu().numpy().astype(dtype) for name, tensor in normalizer.items()}
+    )
+    if hasattr(net, "blocks"):
+        arrays["arch"] = np.asarray([len(net.blocks), net.heads, net.attn_dim], dtype=np.int32)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(path, **arrays)
     return arrays
@@ -193,6 +201,9 @@ def main() -> int:
     parser.add_argument("--patience", type=int, default=2, help="arena evaluations without improvement")
     parser.add_argument("--arena-start", type=int, default=0, help="first epoch that runs the mini arena")
     parser.add_argument("--save-each", type=Path, default=None, help="directory for per-epoch checkpoints")
+    parser.add_argument("--arch", choices=["v9", "big"], default="v9",
+                        help="v9 = 2x2 d=64 (v15); big = 4x4 d=80 Pre-LN (v19)")
+    parser.add_argument("--fp16-save", action="store_true", help="store weights as float16 (~half size)")
     parser.add_argument("--print-every", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
@@ -246,7 +257,7 @@ def main() -> int:
 
     normalizer = compute_normalizer(state, options, mask, train_idx)
 
-    net = M.MazlumNet()
+    net = M.MazlumNetBig() if args.arch == "big" else M.MazlumNet()
     if args.init is not None:
         if not args.init.is_file():
             print(f"error: init model not found: {args.init}")
@@ -325,7 +336,7 @@ def main() -> int:
 
         if args.save_each is not None:
             args.save_each.mkdir(parents=True, exist_ok=True)
-            save_numpy(net, normalizer, args.save_each / f"epoch_{epoch:03d}.npz")
+            save_numpy(net, normalizer, args.save_each / f"epoch_{epoch:03d}.npz", args.fp16_save)
 
         print(line)
 
@@ -343,7 +354,7 @@ def main() -> int:
     print(f"train: loss {train_loss:.4f}  top1 {train_acc * 100:.2f}%")
     print(f"val:   loss {val_loss:.4f}  top1 {val_acc * 100:.2f}%")
 
-    arrays = save_numpy(net, normalizer, args.out)
+    arrays = save_numpy(net, normalizer, args.out, args.fp16_save)
     size_kb = args.out.stat().st_size / 1024
     print(f"\nwrote: {args.out}  ({size_kb:.1f} KB, {len(arrays)} arrays)")
     return 0

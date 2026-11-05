@@ -78,7 +78,7 @@ def masked_softmax(scores: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
 class MazlumPolicy:
-    """NumPy port of ``model.MazlumNet`` (2 heads, 2 blocks) + lethal override."""
+    """NumPy port of the Mazlum policies (v9 2x2 and v19 4x4 Pre-LN) + lethal override."""
 
     def __init__(self, model_path: Path, features_module, deck: list[int]) -> None:
         data = np.load(model_path)
@@ -89,15 +89,23 @@ class MazlumPolicy:
         self.weights = {
             name: data[name].astype(np.float32)
             for name in data.files
-            if name not in NORMALIZER_KEYS
+            if name not in NORMALIZER_KEYS and name != "arch"
         }
         self.features = features_module
         self.deck = list(deck)
         self.model_path = model_path
         self.lethal_index = features_module.OPTION_FEATURE_NAMES.index("attack_lethal")
-        # Architecture constants shared with model.MazlumNet (2 heads, d=64).
-        self.heads = 2
-        self.attn_dim = int(self.weights["q1.weight"].shape[0])
+
+        self.is_big = "blocks.0.q.weight" in self.weights
+        if self.is_big:
+            self.attn_dim = int(self.weights["blocks.0.q.weight"].shape[0])
+            arch = data["arch"] if "arch" in data.files else None
+            self.heads = int(arch[1]) if arch is not None else 4
+            self.num_blocks = len({int(n.split(".")[1]) for n in self.weights if n.startswith("blocks.")})
+        else:
+            self.heads = 2
+            self.attn_dim = int(self.weights["q1.weight"].shape[0])
+            self.num_blocks = 2
         self.head_dim = self.attn_dim // self.heads
         self.attn_scale = float(np.sqrt(self.head_dim))
         # Hybrid rule; can be disabled for ablations.
@@ -120,6 +128,42 @@ class MazlumPolicy:
         context = np.einsum("hn,hnd->hd", attention, v)  # (H, dh)
         return context.reshape(self.attn_dim)
 
+    def _layer_norm(self, x: np.ndarray, weight: np.ndarray, bias: np.ndarray) -> np.ndarray:
+        mean = x.mean(axis=-1, keepdims=True)
+        variance = x.var(axis=-1, keepdims=True)
+        return (x - mean) / np.sqrt(variance + 1e-5) * weight + bias
+
+    def _logits_big(self, option_input: np.ndarray, state: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """v19 forward: 4 Pre-LN blocks x 4 heads, d=80."""
+        w = self.weights
+        tokens = self._linear(option_input, w["option_proj.weight"], w["option_proj.bias"])
+        state_token = self._linear(state, w["state_proj.weight"], w["state_proj.bias"])
+        carry = np.zeros_like(state_token)
+
+        for index in range(self.num_blocks):
+            p = f"blocks.{index}."
+            token_norm = self._layer_norm(tokens, w[p + "ln_1.weight"], w[p + "ln_1.bias"])
+            query = self._linear(
+                self._layer_norm(state_token + carry, w[p + "ln_q.weight"], w[p + "ln_q.bias"]),
+                w[p + "q.weight"],
+                w[p + "q.bias"],
+            )
+            context = self._attention(
+                query,
+                self._linear(token_norm, w[p + "k.weight"], w[p + "k.bias"]),
+                self._linear(token_norm, w[p + "v.weight"], w[p + "v.bias"]),
+                mask,
+            )
+            carry = carry + self._linear(context, w[p + "o.weight"], w[p + "o.bias"])
+
+            ffn_input = self._layer_norm(tokens, w[p + "ln_2.weight"], w[p + "ln_2.bias"])
+            ffn_hidden = np.maximum(0.0, self._linear(ffn_input, w[p + "ffn.0.weight"], w[p + "ffn.0.bias"]))
+            tokens = tokens + self._linear(ffn_hidden, w[p + "ffn.2.weight"], w[p + "ffn.2.bias"])
+
+        joint = np.concatenate([tokens, np.broadcast_to(carry, tokens.shape)], axis=1)
+        hidden = np.maximum(0.0, self._linear(joint, w["head.0.weight"], w["head.0.bias"]))
+        return self._linear(hidden, w["head.2.weight"], w["head.2.bias"]).ravel()
+
     def logits(self, state: np.ndarray, options: np.ndarray, card_ids: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """Return one score per option (no final masking applied)."""
         state = (state - self.state_mean) / (self.state_std + 1e-8)
@@ -130,6 +174,9 @@ class MazlumPolicy:
         actor_emb = table[card_ids[:, 0].astype(np.int64)]
         target_emb = table[card_ids[:, 1].astype(np.int64)]
         option_input = np.concatenate([options, actor_emb, target_emb], axis=1)  # (N, 104)
+
+        if self.is_big:
+            return self._logits_big(option_input, state, mask)
 
         tokens = self._linear(option_input, w["option_proj.weight"], w["option_proj.bias"])  # (N,64)
         state_token = self._linear(state, w["state_proj.weight"], w["state_proj.bias"])  # (64,)
