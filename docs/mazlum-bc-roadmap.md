@@ -712,6 +712,23 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
   aynada ise **ölçülebilir küçük kayıp**. Karar kuralı (Dragapult ≥%58 ve
   ayna ≥%94) sağlanmadı → **v15 şampiyon**. v19 arşivde.
 
+### v20 — Büyük beyin + hedefli veri (kapasite ∩ uzmanlık)
+
+- v19 mimarisi (296.449 param, 4×4×80 Pre-LN, 37-dim), `dataset_v15`
+  (322.160 satır / 806 episode) üzerinde **v19'dan fine-tune**:
+  lr 1e-4, 10 epoch, fp16 checkpoint.
+- Val top-1: **%62,71** (ep1) → %61,15 (ep10) — hedefli sette ezber
+  başlıyor; arena yine farklı yerde zirve yaptı.
+- Tarama (10 × 200 Dragapult): zirve **ep7 %58,0**.
+- **Altın doğrulama (1.000 maç, seed 777):**
+  Dragapult **%58,6** (586-414) · ayna **%92,3** (923-77).
+- Karar kuralı: Dragapult ≥%58 ✔ / ayna ≥%94 ✘ → **v20 reddedildi**.
+  Dragapult farkı +3,0 pp (1,4σ, anlamsız); ayna −2,5 pp (2,3σ, anlamlı).
+- Kapanış: kapasite artışı Dragapult'u hafifçe yukarı, aynayı **gerçekten**
+  aşağı çekiyor. İki eksen birlikte kazanılamıyorsa turnuva için doğru
+  tercih ayna ağırlıklı **v15**.
+
+
 
 
 

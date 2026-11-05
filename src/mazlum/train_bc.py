@@ -266,7 +266,7 @@ def main() -> int:
             init_state = {
                 name: torch.from_numpy(init_data[name].astype(np.float32))
                 for name in init_data.files
-                if name not in NORMALIZER_KEYS
+                if name not in NORMALIZER_KEYS and name != "arch"
             }
         net.load_state_dict(init_state)
         print(f"initialized from: {args.init} ({len(init_state)} tensors)")
