@@ -170,11 +170,30 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
   İlk kez eğitim uzadıkça yükselen bir eğri var; 10 epoch erken kesmiş.
 - Script: `tools/mazlum/v29_run.ps1`.
 
+### S1d sonuç — v27 büyük mimari (bitti)
+
+| Checkpoint | vs Dragapult (300 maç, seed 777) |
+|---|---:|
+| ep10 | %12,0 |
+| **ep25** | **%20,0** |
+| ep40 | %16,0 (aşırı öğrenme) |
+
+- 296k parametre, 85.950 satır: **%20,0** — şimdiye kadarki en iyi Slowking
+  (taban %14,3–14,7). 40 epoch'ta val eğrisi bozuluyor; doğru yer ~ep25.
+- Banette karşılaştırması ayrıca koşuluyor.
+
 ### S1h — v30: genelist→uzman devam (çalışıyor)
 
 - v29 ep10'dan 20 epoch daha (lr 5e-5), ep5/10/15/20 × 300 maç Dragapult.
 - Amaç: %17,7'nin üstüne çıkıyor mu, yoksa plato mu?
 - Script: `tools/mazlum/v30_run.ps1`.
+
+### Fikir: iki modelin logit ortalaması (ensemble)
+
+- v27 ep25 (big, %20,0) + v30'un en iyi checkpoint'i (small, ~%18) aynı
+  özellikleri tüketiyor; ajan iki model yükleyip logit ortalaması alabilir.
+- Beklenen: +2–5 pp; maliyet: karar başına 2× çıkarım (NumPy, önemsiz) ve
+  paket boyutu +0,5 MB. Ladder'a çıkmadan önce denenebilir.
 
 ### Karar ağacı (kullanıcı dönünce)
 
