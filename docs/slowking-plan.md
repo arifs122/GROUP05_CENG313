@@ -92,7 +92,36 @@ Yani v24'ün "8 → 27" ekran farkı **seed gürültüsü**. Bundan sonra:
 - Önce 300 maçlık doğrulama: v22 vs v24 ep2 (seed 777).
 - Script: `tools/mazlum/v25_run.ps1`.
 
-### S1c — v26: yalnız Slowking tarafı (çalışıyor)
+### S1c — v26: yalnız Slowking tarafı (bitti: fark yok)
+
+- 85.950 satır (513 episode, sadece Slowking oyuncusu), sıfırdan 30 epoch,
+  val top-1 **%60,83**.
+- **300 maç seed 777:** v26 ep30 **%14,7** · v22 taban **%14,3** → fark yok.
+- Sonuç: iki taraflı veri kirliliği hipotezi de çürüdü.
+
+### Veri kalitesi denetimi
+
+- 513 Slowking episode'un **493'ü ilk-20 takımdan** (medyan sıra 2).
+- Yani veri zaten elit; "kötü pilot" filtresi de çözüm değil.
+
+### S1d — v27: kapasite testi (çalışıyor)
+
+- `MazlumNetBig` (296k, 4×4×80 Pre-LN), v26 verisi (85.950 satır), sıfırdan,
+  40 epoch, lr 1e-3.
+- ep10 / ep25 / ep40, 300 maç Dragapult (seed 777). Taban %14,3.
+- Script: `tools/mazlum/v27_run.ps1`.
+
+### S1e — Genel güç karşılaştırması (çalışıyor)
+
+- v22 ep23 ve v26 ep30, Banette botuna karşı 300 maç (seed 777).
+- Script: `tools/mazlum/slowking_banette_cmp.ps1`.
+
+### Karar ağacı (kullanıcı dönünce)
+
+1. **Restore onayı** → v21 (939) geri yükle.
+2. v27 kapasite testi Dragapult'ta > %25 yaparsa → paketle, A/B'ye gönder.
+3. Yapmazsa → BC tavanı kabul edilir; sıradaki gerçek adım **PPO-lite**
+   (CPU, 100-300k oyun) veya özellik/encoder yükseltmesi.
 
 - **Kök sorun hipotezi:** v22 verisinin yarısı rakibin kararları
   (168.720 satırın 85.950'si Slowking tarafı). Ajan hem Slowking'i hem
