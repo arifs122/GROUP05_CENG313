@@ -728,6 +728,45 @@ ağırlıksızdı ve model val top-1 ile seçiliyordu. Düzeltmeler:
   aşağı çekiyor. İki eksen birlikte kazanılamıyorsa turnuva için doğru
   tercih ayna ağırlıklı **v15**.
 
+### v21 — Kayıp eşleşmelere hedefli fine-tune (Hydrapple/Archaludon/Festival/Grimmsnarl/Lopunny)
+
+- Veri: 498 episode → **174.771 satır** (139.399 train / 35.372 val).
+  Dağılım: Festival 219, Hydrapple 204, Archaludon 45 (yalnız 5 Banette
+  galibiyeti), Grimmsnarl 19, Lopunny 11.
+- v15'ten fine-tune: lr 1e-4, 8 epoch, fp32. Val top-1 %65,66 (ep4'te plato).
+- Tarama (8 × 200 Dragapult): zirve ep2 %52,5.
+- **Altın doğrulama (1.000 maç, seed 777):**
+  Dragapult **%47,4** (−8,2 pp) · ayna **%93,2** (−1,6 pp).
+  Yerel protokol "reddet" dedi; blog dersi gereği yine de ladder'a gönderildi.
+- **Ladder sonucu:** takım skoru **896,2 → 939,0** (sıra 196 → **148**), +42,8.
+  Yerel Dragapult regresyonu ladder'da **tersine döndü**. v21 ikinci slotta kaldı.
+- Ders: yerel metrik iki kez üst üste yanıltıcı; hedefli veri ladder'da çalışıyor.
+
+### v22 — Slowking BC uzmanı (sıfırdan, 37-dim)
+
+- Veri: 513 Slowking-Kangaskhan episode → **168.720 satır**
+  (136.738 train / 31.982 val). Deste: `decks/lab/slowking_kangaskhan.csv`
+  (60 kart, Akademi + Ciphermaniac + Kyurem/Conkeldurr/Annihilape + Mega
+  Kangaskhan + Lillie's Clefairy).
+- Sıfırdan `MazlumNet` (147.521 param), lr 1e-3, 25 epoch, her epoch checkpoint.
+  En iyi val loss **ep23** (top-1 %58,85); train %65,06.
+- Yerel (100 maç, seed 4242): Banette'e **%55,0** (4 oyun `max_steps` draw),
+  Dragapult'a **%20,0** — yerel bot Dragapult'a karşı zayıf, ama bu ölçüt
+  ladder'ı öngörmüyor.
+- Paket: `submissions/mazlum_v22_slowking.tar.gz` (2,56 MiB, model sha
+  `871246e5`, deste 60/60 doğrulandı).
+- Kaggle **ref 58031843** (A/B; Alakazam "known 1074.1" birinci slotta).
+- Karar: 24 saat sonra takım skoru > 939 ise Slowking hattı devam;
+  düşerse v21 paketi geri yüklenir.
+
+### Kaggle gerçeği (5 Kasım 2026)
+
+- Takım: **"Attention Is All You Mew"**, iki skorlu slot = **en son iki submission**.
+- Aktif çift: Alakazam PPO (ref 58030010, bilinen 1074,1) + son deneme.
+- Ölçülen: 896,2 (sıra 196) → v21 ile **939,0 (sıra 148)**.
+- Lider: Petit Canard 1574,3. Aradaki fark ~635 puan; BC-only ile kapanmaz,
+  lig PPO + uzmanlaşma gerekir.
+
 
 
 
