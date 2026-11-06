@@ -215,7 +215,9 @@ Aynı ölçüt: 300 maç vs `bots/dragapult`, seed 777 (±2 pp).
 | v31 | big + tam veri (168k) | %18,7 |
 | ensemble | v27 + v30 | %17,0 |
 
-**Kazanan: v27 ep25** — Dragapult %20,0 · Banette %61,7 (genel güç de en iyi).
+**Kazanan: v27 ep25** — Dragapult %20,0 (seed 777) + %17,7 (seed 4242)
+= **600 maçta %18,8** (±1,6) · Banette %61,7 (genel güç de en iyi).
+Taban v22 aynı ölçütte %14,3 → **+4,5 pp** (~2,3σ, gerçek ama mütevazı).
 
 ### Paket (hazır, gönderilmedi)
 
