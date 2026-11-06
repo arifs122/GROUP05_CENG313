@@ -266,6 +266,33 @@ v2. Big arch, 25 epoch; ep15/20/25 × 300 maç Dragapult. Taban: v27 %20,0.
 - Disk izleniyor: 68,6 GB boş, replay arşivi 80,4 GB. Gerekirse madencilik
   durdurulup eski replay'ler temizlenecek.
 
+### v34 sonucu — 2,1× veri (büyük sıçrama)
+
+| Checkpoint | vs Dragapult (300 maç, seed 777) |
+|---|---:|
+| ep15 | %22,3 |
+| ep20 | %17,7 |
+| **ep25** | **%25,3** |
+
+- Val top-1 **%70,48** (v33: %62,9 · v27: %60,8).
+- İkinci seed doğrulaması ve Banette testi koşuluyor.
+- Dikkat: yeni madencilik **yalnız kazanan** maçları topluyor; veri seti artık
+  zafer ağırlıklı (Dragapult %63, Alakazam %75 galibiyet). Sıçramanın bir
+  kısmı bu dağılım kaymasından olabilir; karışım denemesi (v35) gerekli.
+
+### Yeni veri dağılımı (1.095 episode)
+
+| Rakip | Episode | Slowking galibiyeti |
+|---|---:|---:|
+| Dragapult | 298 | %63 |
+| Alakazam | 214 | **%75** (eski: %23) |
+| Excadrill | 137 | %83 |
+| Banette | 117 | %63 |
+| Hydrapple | 111 | %99 |
+
+Alakazam verisi 69 → 214'e çıktı ve kazanma oranı %23 → %75; anti-Alakazam
+uzmanı için artık yeterli taban var.
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.
