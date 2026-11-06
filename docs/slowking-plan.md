@@ -199,6 +199,24 @@ Motorun `RESULT.reason` kodları (`vendor/cg/api.py`):
   (tek v27: %20,0). **Ensemble işe yaramadı**; v30 daha zayıf olduğu için
   ortalamayı aşağı çekiyor. Tek model kullanılacak.
 
+### Slowking sonuç özeti (6 Kasım sabah)
+
+Aynı ölçüt: 300 maç vs `bots/dragapult`, seed 777 (±2 pp).
+
+| Deney | Yaklaşım | Dragapult |
+|---|---|---:|
+| v22 | small, iki taraf, 25 ep | %14,3 |
+| v24 | hard-matchup fine-tune | %15,0 |
+| v26 | small, tek taraf (Slowking) | %14,7 |
+| **v27** | **big 296k, tek taraf, ep25** | **%20,0** |
+| v28 | kazanan maç 3× ağırlık | %16,3 |
+| v29 | genelist→uzman, 10 ep | %17,7 |
+| v30 | v29 + 20 ep | %16,3 / %14,0 / %16,0 |
+| v31 | big + tam veri (168k) | %18,7 |
+| ensemble | v27 + v30 | %17,0 |
+
+**Kazanan: v27 ep25** — Dragapult %20,0 · Banette %61,7 (genel güç de en iyi).
+
 ### Paket (hazır, gönderilmedi)
 
 - `submissions/mazlum_v27_slowking.tar.gz` — 3,10 MiB
