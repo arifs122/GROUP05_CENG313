@@ -100,13 +100,32 @@ def list_teams(limit: int) -> list[tuple[int, str]]:
     return teams
 
 
+def _api_retry(call, *args, attempts: int = 8, base: float = 8.0, **kwargs):
+    """Retry a Kaggle API call with backoff on 429 (team/submission listings)."""
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return call(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            text = str(exc)
+            if "429" not in text and "Too Many Requests" not in text:
+                raise
+            pause = base * (attempt + 1) + random.random() * 2.0
+            print(f"    429 on api call; sleeping {pause:.1f}s (attempt {attempt + 1}/{attempts})", flush=True)
+            time.sleep(pause)
+    if last is not None:
+        raise last
+    return None
+
+
 def list_submissions(team_id: int, limit: int) -> list[int]:
-    subs = api_client().competition_team_submissions(team_id) or []
+    subs = _api_retry(api_client().competition_team_submissions, team_id) or []
     return [int(sub.id) for sub in subs[:limit]]
 
 
 def list_episodes(submission_id: int) -> list[dict]:
-    episodes = api_client().competition_list_episodes(submission_id) or []
+    episodes = _api_retry(api_client().competition_list_episodes, submission_id) or []
     rows = []
     for episode in episodes:
         if "COMPLETED" not in str(getattr(episode, "state", "")):

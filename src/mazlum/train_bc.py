@@ -201,8 +201,8 @@ def main() -> int:
     parser.add_argument("--patience", type=int, default=2, help="arena evaluations without improvement")
     parser.add_argument("--arena-start", type=int, default=0, help="first epoch that runs the mini arena")
     parser.add_argument("--save-each", type=Path, default=None, help="directory for per-epoch checkpoints")
-    parser.add_argument("--arch", choices=["v9", "big"], default="v9",
-                        help="v9 = 2x2 d=64 (v15); big = 4x4 d=80 Pre-LN (v19)")
+    parser.add_argument("--arch", choices=["v9", "big", "wide"], default="v9",
+                        help="v9 = 2x2 d=64 (v15); big = 4x4 d=80 Pre-LN (v19); wide = 4x4 d=128")
     parser.add_argument("--fp16-save", action="store_true", help="store weights as float16 (~half size)")
     parser.add_argument("--print-every", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -259,11 +259,20 @@ def main() -> int:
 
     state_dim = int(state.shape[1])
     option_dim = int(options.shape[2])
-    net = (
-        M.MazlumNetBig(state_dim=state_dim, option_dim=option_dim)
-        if args.arch == "big"
-        else M.MazlumNet(state_dim=state_dim, option_dim=option_dim)
-    )
+    if args.arch == "big":
+        net = M.MazlumNetBig(state_dim=state_dim, option_dim=option_dim)
+    elif args.arch == "wide":
+        net = M.MazlumNetBig(
+            state_dim=state_dim,
+            option_dim=option_dim,
+            attn_dim=128,
+            heads=4,
+            blocks=4,
+            ffn_dim=256,
+            hidden=192,
+        )
+    else:
+        net = M.MazlumNet(state_dim=state_dim, option_dim=option_dim)
     if args.init is not None:
         if not args.init.is_file():
             print(f"error: init model not found: {args.init}")
