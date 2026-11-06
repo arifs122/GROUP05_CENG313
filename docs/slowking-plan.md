@@ -250,6 +250,22 @@ hedef binlerce). 429'lara geri çekilmeli yanıt veriyor.
 **v33 (kontrollü deney):** v27 ile **aynı 85.950 satır**, sadece özellikler
 v2. Big arch, 25 epoch; ep15/20/25 × 300 maç Dragapult. Taban: v27 %20,0.
 
+### v33 sonucu — feature v2 (bitti)
+
+- v27 ile aynı 85.950 satır, big arch, 25 epoch.
+- Val top-1 **%62,91** (v27: %60,83) → özellikler insan taklidini **iyileştiriyor**.
+- Ama win-rate: ep15 %17,3 · **ep20 %20,7** · ep25 %18,3 → v27'nin %20,0'ı ile
+  aynı. Tek başına özellik yeterli değil; **veri ölçeği** gerekiyor.
+
+### v34 — 2,1× veri (çalışıyor)
+
+- Madencilik 513 → **1.091** Slowking episode (780 submission tarandı, sürüyor).
+- v2 veri seti: 334.827 satır (1.091 episode), tek taraf filtresi → **181.099 satır**
+  (873 train / 218 val episode).
+- Big arch, 25 epoch, ep15/20/25 × 300 maç Dragapult (taban %20,0).
+- Disk izleniyor: 68,6 GB boş, replay arşivi 80,4 GB. Gerekirse madencilik
+  durdurulup eski replay'ler temizlenecek.
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.
