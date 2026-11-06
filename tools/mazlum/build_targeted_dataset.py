@@ -45,7 +45,10 @@ def main() -> int:
     parser.add_argument("--archetype", default=None, help="require this archetype in the episode")
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--schema", type=int, default=1, help="feature schema (1 legacy, 2 extended)")
     args = parser.parse_args()
+
+    F.configure(args.schema)
 
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     wanted = None
@@ -69,8 +72,8 @@ def main() -> int:
     print(f"selected episodes: {len(episodes)}", flush=True)
 
     cap = args.capacity
-    states = np.empty((cap, F.STATE_FEATURE_SIZE), dtype=np.float16)
-    options = np.empty((cap, F.MAX_OPTIONS, F.OPTION_FEATURE_SIZE), dtype=np.float16)
+    states = np.empty((cap, F.state_feature_size()), dtype=np.float16)
+    options = np.empty((cap, F.MAX_OPTIONS, F.option_feature_size()), dtype=np.float16)
     card_ids = np.empty((cap, F.MAX_OPTIONS, 2), dtype=np.int16)
     mask = np.empty((cap, F.MAX_OPTIONS), dtype=np.float16)
     label = np.empty(cap, dtype=np.int64)

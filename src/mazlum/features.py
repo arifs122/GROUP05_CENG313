@@ -118,6 +118,50 @@ OPTION_FEATURE_NAMES = (
 OPTION_FEATURE_SIZE = len(OPTION_FEATURE_NAMES)
 STATE_FEATURE_SIZE = len(STATE_FEATURE_NAMES)
 
+# --- schema v2 (opt-in) ---------------------------------------------------
+# v1 stays the default so existing models/bundles keep working. v2 adds the
+# information the Slowking engine needs: bench energy, bench HP, hand makeup,
+# ex/prize risk and the target Pokemon's state.
+STATE_V2_EXTRA_NAMES = (
+    "my_active_energy",
+    "my_bench_energy",
+    "my_hand_energy",
+    "my_hand_basic",
+    "my_bench_count",
+    "my_bench_hp_sum",
+    "my_bench_max_hp",
+    "opp_active_ex",
+    "my_active_ex",
+    "turn",
+)
+OPTION_V2_EXTRA_NAMES = (
+    "target_hp_ratio",
+    "target_energy",
+    "target_ex",
+)
+
+_SCHEMA = 1
+
+
+def configure(schema: int) -> None:
+    """Select the feature schema (1 = legacy, 2 = extended)."""
+    global _SCHEMA
+    _SCHEMA = 2 if int(schema) >= 2 else 1
+
+
+def current_schema() -> int:
+    return _SCHEMA
+
+
+def state_feature_size() -> int:
+    extra = len(STATE_V2_EXTRA_NAMES) if _SCHEMA >= 2 else 0
+    return STATE_FEATURE_SIZE + extra
+
+
+def option_feature_size() -> int:
+    extra = len(OPTION_V2_EXTRA_NAMES) if _SCHEMA >= 2 else 0
+    return OPTION_FEATURE_SIZE + extra
+
 # Area ids used by the engine.
 AREA_DECK = 1
 AREA_HAND = 2
@@ -453,6 +497,88 @@ def _opp_active_energy(state: dict) -> float:
     return float(len(_get(pokemon, "energies", []) or []))
 
 
+ENERGY_CARD_TYPES = (5, 6)  # BASIC_ENERGY, SPECIAL_ENERGY
+POKEMON_CARD_TYPE = 0
+
+
+def _pokemon_energy(pokemon: dict | None) -> int:
+    if not pokemon:
+        return 0
+    return len(pokemon.get("energies") or pokemon.get("energy") or [])
+
+
+def _pokemon_at(observation: dict, player: int, area, index) -> dict | None:
+    if area is None or index is None:
+        return None
+    state = _player_state(observation, player)
+    try:
+        area = int(area)
+        index = int(index)
+        if area == AREA_ACTIVE:
+            active = state.get("active") or []
+            return active[index] if index < len(active) else None
+        if area == AREA_BENCH:
+            bench = state.get("bench") or []
+            return bench[index] if index < len(bench) else None
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    return None
+
+
+def _card_is_ex(card_id) -> float:
+    meta = _card_table().get(int(card_id or 0))
+    if meta is None:
+        return 0.0
+    return 1.0 if (getattr(meta, "ex", False) or getattr(meta, "megaEx", False)) else 0.0
+
+
+def _hand_cards(observation: dict, player: int) -> list:
+    return _player_state(observation, player).get("hand") or []
+
+
+def _hand_type_count(observation: dict, player: int, types: tuple[int, ...]) -> float:
+    return float(sum(1 for card in _hand_cards(observation, player) if _card_type(card) in types))
+
+
+def _state_v2_extras(observation: dict, player: int, state: dict) -> np.ndarray:
+    bench = state.get("bench") or []
+    bench_hp = [float(_get(pokemon, "hp", 0) or 0) for pokemon in bench]
+    bench_max = [float(_get(pokemon, "maxHp", 0) or 0) for pokemon in bench]
+    active = _active(observation, player)
+    values = [
+        _pokemon_energy(active) / 3.0,
+        sum(_pokemon_energy(pokemon) for pokemon in bench) / 10.0,
+        _hand_type_count(observation, player, ENERGY_CARD_TYPES) / 5.0,
+        _hand_type_count(observation, player, (POKEMON_CARD_TYPE,)) / 6.0,
+        len(bench) / 5.0,
+        sum(bench_hp) / 1000.0,
+        (max(bench_max) if bench_max else 0.0) / 400.0,
+        _card_is_ex((_active(observation, 1 - player) or {}).get("id")),
+        _card_is_ex((active or {}).get("id")),
+        float((observation.get("current") or {}).get("turn", 0) or 0) / 20.0,
+    ]
+    return np.array(values, dtype=np.float32)
+
+
+def _option_v2_extras(observation: dict, player: int, option: dict) -> np.ndarray:
+    option_type = int(_get(option, "type", -1))
+    target = None
+    if option_type == 13:
+        target = _active(observation, 1 - player)
+    elif _get(option, "inPlayArea") is not None:
+        target = _pokemon_at(observation, player, _get(option, "inPlayArea"), _get(option, "inPlayIndex"))
+    if not target:
+        return np.zeros(len(OPTION_V2_EXTRA_NAMES), dtype=np.float32)
+    hp = float(_get(target, "hp", 0) or 0)
+    max_hp = float(_get(target, "maxHp", 0) or 0)
+    values = [
+        hp / max_hp if max_hp > 0 else 0.0,
+        _pokemon_energy(target) / 3.0,
+        _card_is_ex(target.get("id")),
+    ]
+    return np.array(values, dtype=np.float32)
+
+
 def state_vector(observation: dict, deck: list[int] | None = None) -> np.ndarray:
     """1D tactical state vector (v13, 37 dims).
 
@@ -494,12 +620,15 @@ def state_vector(observation: dict, deck: list[int] | None = None) -> np.ndarray
         ],
         dtype=np.float32,
     )
-    return np.concatenate([base, deck_histogram(deck)])
+    vector = np.concatenate([base, deck_histogram(deck)])
+    if _SCHEMA >= 2:
+        vector = np.concatenate([vector, _state_v2_extras(observation, player, state)])
+    return vector
 
 
 def _option_features(observation: dict, player: int, option: dict) -> np.ndarray:
     """Numeric description of a single legal option."""
-    features = np.zeros(OPTION_FEATURE_SIZE, dtype=np.float32)
+    features = np.zeros(option_feature_size(), dtype=np.float32)
 
     option_type = int(_get(option, "type", -1))
     if 0 <= option_type < OPTION_TYPE_COUNT:
@@ -536,6 +665,9 @@ def _option_features(observation: dict, player: int, option: dict) -> np.ndarray
             features[energy_offset + energy] += 1.0 / _ENERGY_COST_SCALE
 
     features[offset + 11 + ENERGY_TYPE_COUNT] = _attack_lethal(observation, player, option)
+
+    if _SCHEMA >= 2:
+        features[OPTION_FEATURE_SIZE:] = _option_v2_extras(observation, player, option)
 
     return features
 
@@ -578,7 +710,7 @@ def options_matrix(observation: dict) -> tuple[np.ndarray, np.ndarray]:
     raw_options = select.get("option") or []
     player = int((observation.get("current") or {}).get("yourIndex", 0))
 
-    options = np.zeros((MAX_OPTIONS, OPTION_FEATURE_SIZE), dtype=np.float32)
+    options = np.zeros((MAX_OPTIONS, option_feature_size()), dtype=np.float32)
     mask = np.zeros(MAX_OPTIONS, dtype=np.float32)
 
     for row, option in enumerate(raw_options[:MAX_OPTIONS]):

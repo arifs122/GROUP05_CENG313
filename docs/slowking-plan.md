@@ -226,6 +226,30 @@ Taban v22 aynı ölçütte %14,3 → **+4,5 pp** (~2,3σ, gerçek ama mütevazı
 - deste: Slowking 60/60 doğrulandı · şampiyon v15 yerinde
 - A/B planı: önce v21 restore (939), sonra bu paket; 24 saat sonra karşılaştır.
 
+### S2 — Feature v2 + büyük veri kampanyası (6 Kasım, devam)
+
+**Neden:** v1 vektörü (37 state / 41 option) Slowking motorunun ihtiyacı olan
+bilgiyi taşımıyor: bench enerjisi, bench HP'si, hedef Pokémon'un durumu, el
+kompozisyonu, ex/prize riski yok.
+
+**Feature v2 (opt-in, sürümlü):**
+- `features.configure(2)` → state **47**, option **44** boyut.
+- Eklenenler (state): aktif enerjisi, bench toplam enerjisi, eldeki enerji,
+  eldeki basic Pokémon, bench sayısı, bench HP toplamı/maks, rakip aktif ex,
+  kendi aktif ex, tur.
+- Eklenenler (option): hedef HP oranı, hedef enerjisi, hedef ex.
+- v1 varsayılan kalır → şampiyon Banette paketleri bozulmaz. Ajan, modelin
+  `state_proj`/`option_proj` boyutundan şemayı otomatik seçer.
+- `build_targeted_dataset.py --schema 2`, `train_bc.py` boyutları veri
+  setinden alır.
+
+**Veri kampanyası:** `collect_replays.py --archetypes Slowking-Kangaskhan
+--teams 420 --subs-per-team 6` arka planda çalışıyor (mevcut: 514 episode;
+hedef binlerce). 429'lara geri çekilmeli yanıt veriyor.
+
+**v33 (kontrollü deney):** v27 ile **aynı 85.950 satır**, sadece özellikler
+v2. Big arch, 25 epoch; ep15/20/25 × 300 maç Dragapult. Taban: v27 %20,0.
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.

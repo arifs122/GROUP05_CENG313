@@ -92,6 +92,12 @@ class MazlumPolicy:
             if name not in NORMALIZER_KEYS and name != "arch"
         }
         self.features = features_module
+        # Feature schema follows the checkpoint: v2 checkpoints have wider
+        # projections than the legacy 37/41 dims.
+        state_dim = int(self.weights["state_proj.weight"].shape[1])
+        option_dim = int(self.weights["option_proj.weight"].shape[1])
+        if state_dim > features_module.STATE_FEATURE_SIZE or option_dim > features_module.OPTION_FEATURE_SIZE:
+            features_module.configure(2)
         self.deck = list(deck)
         self.model_path = model_path
         self.lethal_index = features_module.OPTION_FEATURE_NAMES.index("attack_lethal")

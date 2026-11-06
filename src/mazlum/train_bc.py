@@ -257,7 +257,13 @@ def main() -> int:
 
     normalizer = compute_normalizer(state, options, mask, train_idx)
 
-    net = M.MazlumNetBig() if args.arch == "big" else M.MazlumNet()
+    state_dim = int(state.shape[1])
+    option_dim = int(options.shape[2])
+    net = (
+        M.MazlumNetBig(state_dim=state_dim, option_dim=option_dim)
+        if args.arch == "big"
+        else M.MazlumNet(state_dim=state_dim, option_dim=option_dim)
+    )
     if args.init is not None:
         if not args.init.is_file():
             print(f"error: init model not found: {args.init}")
