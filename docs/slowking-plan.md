@@ -293,6 +293,26 @@ v2. Big arch, 25 epoch; ep15/20/25 × 300 maç Dragapult. Taban: v27 %20,0.
 Alakazam verisi 69 → 214'e çıktı ve kazanma oranı %23 → %75; anti-Alakazam
 uzmanı için artık yeterli taban var.
 
+### v34/v35 — en iyi Slowking (doğrulandı)
+
+| Model | Dragapult (2 seed, 600 maç) | Banette (300 maç) |
+|---|---:|---:|
+| v27 (eski en iyi) | %18,8 | %61,7 |
+| **v34 ep25** | **%23,7** | **%72,3** |
+| v35 ep4 (fine-tune) | %24,3 (seed 777) | — |
+
+- v34: 1.091 episode, feature v2, big arch, 25 epoch.
+- v35: v34'ten 8 epoch lr 3e-4 → ep4 iyi, ep8 aşırı öğrenme.
+- Banette'te %72,3 (v27 %61,7): genel güç de ciddi arttı.
+- `max_steps` draw oranı ~%3 (çökme değil).
+
+### Madencilik (yeniden başlatıldı)
+
+- 1.095 Slowking episode toplandı; submission 780.
+- Bağlantı sıfırlamaları nedeniyle yavaşladı → `--workers 2 --delay 1.5`
+  ile yeniden başlatıldı (önbellek sayesinde kaldığı yerden devam).
+- Hedef: 1.500-2.000 episode → sıfırdan v36 turu (veri ölçeği en güçlü kaldıraç).
+
 ### Karar ağacı (kullanıcı dönünce)
 
 1. **Restore onayı** → v21 (939) geri yükle.
