@@ -63,7 +63,18 @@ def _make_bot(base: Path, deck: Path, dest: Path) -> Path:
         src = base / name
         if not src.exists():
             raise FileNotFoundError(f"{base}: missing {name}")
-        os.symlink(src, dest / name)
+        target = dest / name
+        try:
+            os.symlink(src, target)
+        except OSError:
+            # Windows without symlink privilege: hardlink files, copy dirs.
+            try:
+                os.link(src, target)
+            except OSError:
+                if src.is_dir():
+                    shutil.copytree(src, target, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src, target)
     (dest / "main.py").write_bytes((base / "main.py").read_bytes())
     (dest / "deck.csv").write_bytes(deck.read_bytes())
     return dest
@@ -246,7 +257,7 @@ def main() -> int:
     if not (base / "model.pt").exists():
         raise SystemExit(f"{base}: model.pt not found")
 
-    tmp_root = Path(tempfile.mkdtemp(prefix="ppo_league_", dir="/tmp/opencode"))
+    tmp_root = Path(tempfile.mkdtemp(prefix="ppo_league_"))
     bots: list[Path] = []
     try:
         for name, deck in zip(names, deck_paths):
