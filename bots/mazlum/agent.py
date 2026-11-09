@@ -95,8 +95,9 @@ class MazlumPolicy:
         # Feature schema follows the checkpoint: v2 checkpoints have wider
         # projections than the legacy 37/41 dims.
         state_dim = int(self.weights["state_proj.weight"].shape[1])
-        option_dim = int(self.weights["option_proj.weight"].shape[1])
-        if state_dim > features_module.STATE_FEATURE_SIZE or option_dim > features_module.OPTION_FEATURE_SIZE:
+        # Only the state projection is decisive: option_proj always includes the
+        # two card embeddings, so it is > OPTION_FEATURE_SIZE even for schema v1.
+        if state_dim > features_module.STATE_FEATURE_SIZE:
             features_module.configure(2)
         self.deck = list(deck)
         self.model_path = model_path

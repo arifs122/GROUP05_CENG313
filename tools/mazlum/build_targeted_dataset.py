@@ -46,6 +46,8 @@ def main() -> int:
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--schema", type=int, default=1, help="feature schema (1 legacy, 2 extended)")
+    parser.add_argument("--only-side", default=None,
+                        help="keep only this archetype's decisions (halves memory)")
     args = parser.parse_args()
 
     F.configure(args.schema)
@@ -101,9 +103,16 @@ def main() -> int:
 
         eid = int(entry["episode_id"])
         before = rows
+        side_index = None
+        if args.only_side:
+            arch = entry.get("archetypes") or []
+            if args.only_side in arch:
+                side_index = arch.index(args.only_side)
         for decision, state, option_matrix, m, ids in decisions:
             if rows >= cap:
                 break
+            if side_index is not None and int(decision.player) != side_index:
+                continue
             if not F.has_board(decision.observation):
                 skipped_no_board += 1
                 continue
