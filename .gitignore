@@ -53,3 +53,14 @@ _arena_candidate.npz
 # --- Submission bundles: only the Mazlum package ships ---
 submissions/*
 !submissions/mazlum.tar.gz
+
+# --- Model weights / large generated artifacts (never commit) ---
+*.pt
+*.pth
+*.bin
+*.onnx
+*.pkl
+*.npy
+agents/*/data/
+agents/*/models/
+agents/*/submissions/
