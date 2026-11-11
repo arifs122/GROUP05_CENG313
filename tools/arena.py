@@ -118,6 +118,16 @@ def load_bot(path: Path) -> Bot:
     if not callable(agent):
         raise AttributeError(f"{main_path} does not define a callable agent(obs_dict)")
 
+    # Optional per-game reset hook.  Bots that keep module-level state
+    # (turn logs, inferred prizes, plans) expose reset(); attach it to the
+    # callable so play_game can invoke it without knowing about the module.
+    reset = getattr(module, "reset", None)
+    if callable(reset):
+        try:
+            agent.reset = reset
+        except (AttributeError, TypeError):
+            pass
+
     name = str(meta.get("name") or bot_dir.name)
     return Bot(name=name, path=bot_dir, deck_path=deck_path, deck=deck, agent=agent, meta=meta)
 
@@ -180,6 +190,13 @@ def play_game(
 ) -> dict:
     """Play one game and return its result."""
     start = time.perf_counter()
+    for agent in (agent0, agent1):
+        reset = getattr(agent, "reset", None)
+        if callable(reset):
+            try:
+                reset()
+            except Exception:  # noqa: BLE001 - a bad hook must not kill the game
+                pass
     obs, start_data = battle_start(deck0, deck1, reverse)
     if obs is None:
         return {

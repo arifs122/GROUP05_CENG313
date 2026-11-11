@@ -29,6 +29,7 @@ cg/
 *.so
 *.dll
 *.dylib
+.env
 
 # --- Replays, logs and experiment outputs ---
 replays/

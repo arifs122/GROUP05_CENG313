@@ -234,6 +234,7 @@ Useful commands:
 ```bash
 python tools/arena.py --games 100
 python tools/arena.py --bot0 bots/<a> --bot1 bots/<b> --games 50 --bo3
+python tools/analyze.py --bot bots/dragapult --all --games 100
 python tools/tournament.py --games 50
 python tools/check_deck.py bots/<bot>/deck.csv --engine
 ```

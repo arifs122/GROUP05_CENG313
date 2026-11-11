@@ -484,6 +484,17 @@ def _normalize_selection(ordered, scores, select):
 # ============================================================
 # AGENT ENTRY POINT
 # ============================================================
+def reset():
+    """Clear cross-game state.  The arena calls this before every battle."""
+    global _plan, _turn, _ab_used
+    _plan = None
+    _turn = -1
+    _ab_used = False
+
+
+# NOTE: agent must be the LAST function defined in this module.  The Kaggle
+# validation runner calls the last callable it finds; defining reset() after
+# agent makes validation call reset() instead.
 def agent(obs_dict: dict) -> list[int]:
     global _plan, _turn, _ab_used
     try:
