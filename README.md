@@ -44,7 +44,7 @@ replays for the EDA and the baselines.
 | Submission | Date | Public score | Role |
 |---|---|---:|---|
 | `sample_submission.tar.gz` | 2026-10-21 | 89.5 | sample control |
-| `dragapult.tar.gz` | 2026-10-21 | **521.1** | **Assignment 1 rule baseline** (`src/agent`) |
+| `dragapult.tar.gz` | 2026-10-21 | **521.1** | **first working rule policy** (competition baseline) |
 | `zipzop_baseline.tar.gz` | 2026-11-05 | 556.6 | improved rule baseline |
 | `kassadin.tar.gz` (PPO) | 2026-11-09 | **1035.4** | **current best** |
 
