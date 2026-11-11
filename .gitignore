@@ -35,6 +35,7 @@ replays/
 results/
 logs/
 build/
+experiments/
 
 # --- Datasets: only the trained weights are kept ---
 data/*
