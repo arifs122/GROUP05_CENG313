@@ -10,7 +10,7 @@ EDA/baseline notebook.
 | **Group ID** | **05** |
 | **Kaggle team** | Attention Is All You Mew |
 | **Competition** | [The Pokémon Company — PTCG AI Battle Challenge Playground](https://www.kaggle.com/competitions/the-pokemon-company-ptcg-ai-battle-challenge-playground) |
-| **Repository** | `ceng313-2026/GROUP05_CENG313` (final course location; transferred from the original `TransforMew` repo) |
+| **Repository** | `ceng313-2026/GROUP05_CENG313` (course organization) |
 | **Assignment 1 tag** | `assignment1` |
 | **Assignment 1 deadline** | 13 November 2026, 23:59 |
 | **Assignment 2 deadline** | 30 December 2026, 23:59 |
@@ -23,8 +23,7 @@ EDA/baseline notebook.
 | Fariz Berke Tutanç | [@Farhandir](https://github.com/Farhandir) | 24118080063 |
 | Yunus Erdem Ergül | [@qewer33](https://github.com/qewer33) | 24118080078 |
 
-> Student IDs are filled in by the group before the final submission. Every
-> member has commits in this repository; see **Insights → Contributors**.
+Every member has commits in this repository; see **Insights → Contributors**.
 
 ## Competition and task
 
@@ -58,9 +57,7 @@ reaches **33%**. The score proof only includes our own agents:
 and [`submissions/kaggle_submissions.csv`](submissions/kaggle_submissions.csv).
 
 > **Provenance.** The rule/Lean4/search bots and the Mazlum
-> behavioural-cloning models are **our own code**. Some early PPO experiments
-> were run for learning/benchmarking; they are **not included in the reported
-> results** and are **not claimed as our solution**. Assignment 2 will document
+> behavioural-cloning models are **our own code**. Assignment 2 will document
 > our own improved implementation and cite any adapted idea.
 
 ### Team contributions
@@ -126,9 +123,10 @@ required course files above are the entry points for grading.
 | Baseline | Result |
 |---|---|
 | Dummy (training prior) | 50.0% match-winner accuracy |
-| Logistic regression (deck/matchup features) | **62.1%** match-winner accuracy, **ROC-AUC 0.673**, log loss 0.642 |
-| Rule agent vs random legal actions | ~80–83% win rate (500 games) |
-| Rule agent vs first-legal-action agent | ~52–54% win rate (500 games) |
+| Logistic regression (deck/matchup features) | **62.0%** match-winner accuracy, **ROC-AUC 0.669**, log loss 0.643 |
+| Matchup-only ablation | **61.4%** match-winner accuracy, **ROC-AUC 0.663** |
+| Rule agent vs random legal actions | **80.5%** win rate (3 × 500 games) |
+| Rule agent vs first-legal-action agent | **50.9%** win rate (3 × 500 games) |
 | Kaggle rule baseline | **521.1** public score |
 | Kaggle own best (Mazlum BC) | **643.1** public score |
 
@@ -147,7 +145,7 @@ set; the agent baseline is evaluated separately in the arena and on Kaggle.
 * A typical deck has ~18.8 Pokémon, 15.5 items, 11.6 supporters and 11.5
   energy; Lillie's Determination, Buddy-Buddy Poffin and Ultra Ball are the
   most played cards.
-* The first player wins 50.1% of decisive matches (95% CI 48.8–51.4%), so going
+* The first player wins 51.2% of decisive matches (95% CI 49.9–52.5%), so going
   first is a strategic choice in this sample, not a measurable advantage.
 
 ## Data and setup
@@ -277,11 +275,6 @@ The placeholder notebook is
   group. We did not copy Kaggle notebooks or cells.
 * Public notebooks/discussions were read for ideas only; any adapted idea will
   be cited in a markdown cell with a link.
-* **Exploratory PPO runs are disclosed separately.** Some early PPO experiments
-  were run for learning/benchmarking. They are not included in the reported
-  results, are not claimed as our original solution, and are not the Assignment
-  1 baseline. The Assignment 1 baseline is our own rule policy (public score
-  521.1).
 * Competition data (`data/`, `replays/`, engine) is not committed.
 * Every member can explain the cells they contributed and has meaningful
   commits in the repository.
