@@ -1,9 +1,11 @@
-ref,fileName,date,description,status,publicScore
-58161343,kassadin.tar.gz,2026-11-09,PPO agent — current best (team score 1035.4),COMPLETE,1035.4
-58124604,cassiopeia.tar.gz,2026-11-08,PPO agent — second active submission,COMPLETE,905.4
-58097253,shaco.tar.gz,2026-11-07,PPO agent,COMPLETE,890.1
-58003380,zipzop_baseline.tar.gz,2026-11-05,Rule-based Top2 policy — baseline,COMPLETE,556.6
-57961261,tokatci_lean4_noai.tar.gz,2026-11-03,Lean4 rule pilot (search disabled),COMPLETE,611.5
-57480826,lucario.tar.gz,2026-10-21,Mega Lucario rule policy,COMPLETE,519.7
-57479759,dragapult.tar.gz,2026-10-21,First working rule policy (Dragapult sample policy v1),COMPLETE,521.1
-57499245,sample_submission.tar.gz,2026-10-21,Sample validation control (sanity check),COMPLETE,89.5
+ref,member,fileName,date,description,status,publicScore
+58161343,Arif,kassadin.tar.gz,2026-11-09,"PPO experiment (public-derived) — ladder benchmark",COMPLETE,1035.4
+58030010,Arif,public_alakazam_1074.tar.gz,2026-11-05,"Public PPO probe — external reference",COMPLETE,973.9
+58124604,Arif,cassiopeia.tar.gz,2026-11-08,"PPO experiment (public-derived) — ladder benchmark",COMPLETE,905.4
+57957138,Fariz,mazlum.tar.gz,2026-11-03,"Mazlum behavioural-cloning agent — our own model",COMPLETE,643.1
+58055944,Fariz,mazlum_v21_matchups.tar.gz,2026-11-06,"Mazlum BC v21 — matchup-targeted, our own model",COMPLETE,622.6
+57961261,Arif,tokatci_lean4_noai.tar.gz,2026-11-03,"Lean4 rule pilot (search disabled) — our own agent",COMPLETE,611.5
+57499505,Yerdem,dragapult.tar.gz,2026-10-21,"Dragapult2 agent-last fix — early own rule bot",COMPLETE,595.1
+58003380,Arif,zipzop_baseline.tar.gz,2026-11-05,"Rule-based Top2 policy — our own baseline",COMPLETE,556.6
+57479759,Arif,dragapult.tar.gz,2026-10-21,"Dragapult sample policy v1 — Assignment 1 baseline",COMPLETE,521.1
+57499245,Yerdem,sample_submission.tar.gz,2026-10-21,"Sample validation control (sanity check)",COMPLETE,89.5

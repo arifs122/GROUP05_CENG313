@@ -41,17 +41,40 @@ replays for the EDA and the baselines.
 
 ### Current score
 
-| Submission | Date | Public score | Role |
-|---|---|---:|---|
-| `sample_submission.tar.gz` | 2026-10-21 | 89.5 | sample control |
-| `dragapult.tar.gz` | 2026-10-21 | **521.1** | **first working rule policy** (competition baseline) |
-| `zipzop_baseline.tar.gz` | 2026-11-05 | 556.6 | improved rule baseline |
-| `kassadin.tar.gz` (PPO) | 2026-11-09 | **1035.4** | **current best** |
+| Submission | Member | Date | Public score | Role |
+|---|---|---:|---:|---|
+| `sample_submission.tar.gz` | Yerdem | 2026-10-21 | 89.5 | sample control |
+| `dragapult.tar.gz` | Arif | 2026-10-21 | **521.1** | **Assignment 1 baseline** (our rule policy) |
+| `zipzop_baseline.tar.gz` | Arif | 2026-11-05 | 556.6 | improved rule baseline (ours) |
+| `tokatci_lean4_noai.tar.gz` | Arif | 2026-11-03 | 611.5 | Lean4 rule/search agent (ours) |
+| `mazlum.tar.gz` | Fariz | 2026-11-03 | **643.1** | **best own non-PPO line** (Mazlum BC) |
+| `mazlum_v21_matchups.tar.gz` | Fariz | 2026-11-06 | 622.6 | matchup-targeted Mazlum BC (ours) |
+| `dragapult.tar.gz` | Yerdem | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
+| `cassiopeia.tar.gz` | Arif | 2026-11-08 | 905.4 | PPO experiment (public-derived) |
+| `kassadin.tar.gz` | Arif | 2026-11-09 | **1035.4** | **experimental PPO best** (public-derived) |
 
 At the time of writing the team is around **#389 of 699 teams**; the top public
 score is **1573.9**. The submission history is captured in
 [`submissions/kaggle_submissions.png`](submissions/kaggle_submissions.png)
 and [`submissions/kaggle_submissions.csv`](submissions/kaggle_submissions.csv).
+
+> **Provenance.** The rule/lean/search bots and the Mazlum behavioural-cloning
+> models are **our own code**. The PPO line (`kassadin`, `cassiopeia`, `shaco`,
+> `gragas`, and the explicit `public_*` probes) is **experimental**: it started
+> from public PPO implementations/weights and is used for ladder benchmarking,
+> **not presented as our original solution**. Assignment 2 will document our
+> own improved implementation and cite any adapted idea.
+
+### Team contributions
+
+| Member | Main contributions |
+|---|---|
+| **Arif Dayı** | Rule-based and Lean4/search agents, submission pipeline, replay analysis, PPO benchmarking, Assignment 1 notebook and `src/` modules |
+| **Fariz Berke Tutanç** | Mazlum behavioural-cloning / value models, Banette and Slowking specialists, replay collection and matchup analysis |
+| **Yerdem Gül** | Early Dragapult bot and agent-last validation fix, arena `reset()` hook, `tools/analyze.py`, bot contract and legality tests |
+
+The detailed commit history is visible in **Insights → Contributors**. Every
+member has commits in the repository.
 
 ## Required repository structure
 
@@ -256,6 +279,11 @@ The placeholder notebook is
   group. We did not copy Kaggle notebooks or cells.
 * Public notebooks/discussions were read for ideas only; any adapted idea will
   be cited in a markdown cell with a link.
+* **PPO experiments are disclosed separately.** The PPO submissions in the
+  Kaggle history are benchmark experiments built on public PPO
+  implementations/weights. They are not claimed as our original solution and
+  they are not the Assignment 1 baseline. The Assignment 1 baseline is our own
+  rule policy (public score 521.1).
 * Competition data (`data/`, `replays/`, engine) is not committed.
 * Every member can explain the cells they contributed and has meaningful
   commits in the repository.

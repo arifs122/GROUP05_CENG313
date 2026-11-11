@@ -246,6 +246,7 @@ def plot_calibration(table: pd.DataFrame, ax=None):
 # ---------------------------------------------------------------------------
 SUBMISSION_PROOF_COLUMNS = [
     "ref",
+    "member",
     "fileName",
     "date",
     "description",
@@ -266,45 +267,55 @@ def load_submission_history(path: str | Path = "submissions/kaggle_submissions.c
 def render_submission_proof(
     history: pd.DataFrame,
     output: str | Path = "submissions/kaggle_submissions.png",
-    title: str = "Kaggle submissions — Attention Is All You Mew (GROUP05)",
+    title: str = "Kaggle submissions — team Attention Is All You Mew (GROUP05)",
 ) -> Path:
     """Render a readable proof image from the Kaggle CLI history.
 
     This is a faithful table of the ``My Submissions`` page, captured with the
     Kaggle CLI.  It is committed so the grader can see the score without
-    logging into the team account.
+    logging into the team account.  The ``member`` column and the descriptions
+    separate our own rule/BC agents from the experimental public-derived PPO
+    benchmarks.
     """
     frame = history.copy()
     frame["publicScore"] = frame["publicScore"].map(lambda value: f"{value:.1f}" if pd.notna(value) and value != "" else "—")
-    frame["description"] = frame["description"].map(lambda value: textwrap.shorten(str(value), width=48, placeholder="…"))
+    frame["description"] = frame["description"].map(lambda value: textwrap.shorten(str(value), width=52, placeholder="…"))
     frame = frame.head(10)
-    fig, ax = plt.subplots(figsize=(13, 0.38 * len(frame) + 1.4))
+    fig, ax = plt.subplots(figsize=(14, 0.36 * len(frame) + 1.5))
     ax.axis("off")
     ax.set_title(title, loc="left", fontsize=12, fontweight="bold", pad=10)
     table = ax.table(
         cellText=frame[SUBMISSION_PROOF_COLUMNS].values,
-        colLabels=["ref", "file", "date", "description", "status", "public"],
+        colLabels=["ref", "member", "file", "date", "description", "status", "public"],
         cellLoc="left",
         colLoc="left",
-        colWidths=[0.09, 0.20, 0.09, 0.39, 0.10, 0.08],
+        colWidths=[0.075, 0.075, 0.17, 0.08, 0.39, 0.09, 0.07],
         loc="upper left",
     )
     table.auto_set_font_size(False)
-    table.set_fontsize(7.5)
-    table.scale(1, 1.35)
+    table.set_fontsize(7.0)
+    table.scale(1, 1.32)
     for (row, column), cell in table.get_celld().items():
         cell.set_edgecolor("#DDDDDD")
         if row == 0:
             cell.set_facecolor("#F2F2F2")
-            cell.set_text_props(weight="bold", fontsize=7.5)
-        elif column == 5:
+            cell.set_text_props(weight="bold", fontsize=7.0)
+        elif column == 6:
             cell.set_text_props(weight="bold", color="#1A6B3C")
     fig.text(
         0.01,
-        0.01,
+        0.035,
         "Source: kaggle competitions submissions -c the-pokemon-company-ptcg-ai-battle-challenge-playground",
-        fontsize=7,
+        fontsize=6.8,
         color="#666666",
+    )
+    fig.text(
+        0.01,
+        0.005,
+        "PPO rows are experimental public-derived benchmarks, not our original solution. "
+        "Assignment 1 baseline = 521.1 (rule policy). Own BC line (Mazlum) = 643.1.",
+        fontsize=6.8,
+        color="#444444",
     )
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
