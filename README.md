@@ -1,130 +1,267 @@
-# TransforMew
+# GROUP05_CENG313 — TransforMew
 
-Pokémon TCG AI Battle Challenge için geliştirilen oyun ajanı.
+**CENG313 — Introduction to Data Science · Course Project**
 
-## Özet
+Pokémon TCG AI Battle Challenge agent, replay analysis and the Assignment 1
+EDA/baseline notebook.
 
-Kaggle [PTCG AI Battle Challenge Playground](https://www.kaggle.com/competitions/the-pokemon-company-ptcg-ai-battle-challenge-playground)
-ortamında çalışan bir ajan. Simülatörden gelen gözlemi alır, yasal seçenekler
-arasından karar verir ve seçenek indekslerini döndürür. Maçlar BO3 formatında
-oynanır; değerlendirme galibiyet/mağlubiyet üzerinden yapılır.
+| | |
+|---|---|
+| **Group ID** | **05** |
+| **Kaggle team** | Attention Is All You Mew |
+| **Competition** | [The Pokémon Company — PTCG AI Battle Challenge Playground](https://www.kaggle.com/competitions/the-pokemon-company-ptcg-ai-battle-challenge-playground) |
+| **Repository** | `ceng313-2026/GROUP05_CENG313` (final course location; transferred from the original `TransforMew` repo) |
+| **Assignment 1 tag** | `assignment1` |
+| **Assignment 1 deadline** | 13 November 2026, 23:59 |
+| **Assignment 2 deadline** | 30 December 2026, 23:59 |
 
-Repo şunları içerir:
+## Team
 
-- yerel simülasyon ortamı (`vendor/cg`, kurulumla oluşur),
-- baseline politika (`src/agent`),
-- maç ve ölçüm araçları (`tools/`),
-- Kaggle submission paketleyicisi.
+| Member | GitHub | Student ID |
+|---|---|---|
+| Arif Dayı | [@arifs122](https://github.com/arifs122) | TODO |
+| Fariz Berke Tutanç | [@Farhandir](https://github.com/Farhandir) | TODO |
+| Yerdem Gül | [@qewer33](https://github.com/qewer33) | TODO |
 
-## Kurulum
+> Student IDs are filled in by the group before the final submission. Every
+> member has commits in this repository; see **Insights → Contributors**.
 
-Python 3.10+ gerekir.
+## Competition and task
+
+The competition is a **simulation** competition, not a tabular Kaggle
+competition. Each submission is an agent. At every decision the simulator sends
+an observation with the board state and a list of legal options, and the agent
+returns the indices of the options it selects. Matches are played in
+**best-of-three (BO3)** format and Kaggle evaluates the agents with a
+Bradley–Terry skill rating computed from many episodes.
+
+There is no `train.csv`. The observed data are the episode replays: each replay
+contains both 60-card decks, the result and every decision. We use those
+replays for the EDA and the baselines.
+
+### Current score
+
+| Submission | Date | Public score | Role |
+|---|---|---:|---|
+| `sample_submission.tar.gz` | 2026-10-21 | 89.5 | sample control |
+| `dragapult.tar.gz` | 2026-10-21 | **521.1** | **Assignment 1 rule baseline** (`src/agent`) |
+| `zipzop_baseline.tar.gz` | 2026-11-05 | 556.6 | improved rule baseline |
+| `kassadin.tar.gz` (PPO) | 2026-11-09 | **1035.4** | **current best** |
+
+At the time of writing the team is around **#389 of 699 teams**; the top public
+score is **1573.9**. The submission history is captured in
+[`submissions/kaggle_submissions.png`](submissions/kaggle_submissions.png)
+and [`submissions/kaggle_submissions.csv`](submissions/kaggle_submissions.csv).
+
+## Required repository structure
+
+```
+GROUP05_CENG313/
+├── README.md                          ← this file
+├── requirements.txt                   ← Python packages used
+├── .gitignore                         ← excludes data/ and replays/
+├── assignment1_eda_baseline.ipynb     ← Assignment 1: EDA & baseline
+├── assignment2_solution.ipynb         ← Assignment 2: improved solution (WIP)
+├── src/
+│   ├── __init__.py
+│   ├── data.py                        ← loading & preprocessing functions
+│   ├── models.py                      ← baseline training & evaluation
+│   └── utils.py                       ← plots, confidence intervals, proof
+├── data/                              ← NOT committed (competition data)
+├── replays/                           ← NOT committed (competition data)
+└── submissions/                       ← score proof + submission history
+```
+
+The repository also keeps the original **TransforMew** agent development
+directories (`bots/`, `benchmarks/`, `decks/`, `tools/`, `src/agent/`,
+`src/mazlum/`). They are part of the project and are used by Assignment 2; the
+required course files above are the entry points for grading.
+
+## Assignment 1: EDA & baseline
+
+**Notebook:** [`assignment1_eda_baseline.ipynb`](assignment1_eda_baseline.ipynb)
+(saved with outputs, so it can be read on GitHub).
+
+### What it contains
+
+1. **Problem definition** — agent task, BO3 match target, Bradley–Terry metric.
+2. **Data overview** — 5,879 replay matches, 11,758 deck appearances, 1,431
+   cards, missing values, duplicates and deck-length checks.
+3. **EDA with interpretations** — target balance, replay-source bias,
+   archetype popularity and win rates with Wilson intervals, matchup heatmap,
+   card-kind composition, staple cards, first-player choice, exact-list
+   concentration, outliers.
+4. **Preprocessing** — player-perspective rows, group split by `episode_id`,
+   one-hot matchup/archetype features, card-composition features, scaling and
+   leakage checks.
+5. **Baselines** — logistic regression match-outcome model and the rule-based
+   agent; local arena evaluation and Kaggle scores.
+6. **Kaggle submission** — baseline score 521.1, current best 1035.4, proof
+   image in `submissions/`.
+7. **Conclusion** — findings, limitations and the Assignment 2 plan.
+
+### Headline results
+
+| Baseline | Result |
+|---|---|
+| Dummy (training prior) | 50.0% match-winner accuracy |
+| Logistic regression (deck/matchup features) | **62.1%** match-winner accuracy, **ROC-AUC 0.673**, log loss 0.642 |
+| Rule agent vs random legal actions | ~80–83% win rate (500 games) |
+| Rule agent vs first-legal-action agent | ~52–54% win rate (500 games) |
+| Kaggle rule baseline | **521.1** public score |
+| Kaggle current best (PPO) | **1035.4** public score |
+
+The match-outcome model is **not** the submitted agent. It shows that deck and
+matchup features carry real signal and gives Assignment 2 a validated feature
+set; the agent baseline is evaluated separately in the arena and on Kaggle.
+
+### Key EDA findings
+
+* The meta is concentrated: Dragapult is 40.6% of deck slots; the top five
+  exact lists are 43.9% of all decks and the top twenty are 80.2% (348 distinct
+  lists in 11,758 deck slots).
+* Matchups dominate archetype averages: Mega Excadrill beats Mega Kangaskhan
+  79.9% but loses to Dragapult 65.5%; Dragapult beats Alakazam 66.3% but loses
+  to Mega Kangaskhan 40.4%.
+* A typical deck has ~18.8 Pokémon, 15.5 items, 11.6 supporters and 11.5
+  energy; Lillie's Determination, Buddy-Buddy Poffin and Ultra Ball are the
+  most played cards.
+* The first player wins 50.1% of decisive matches (95% CI 48.8–51.4%), so going
+  first is a strategic choice in this sample, not a measurable advantage.
+
+## Data and setup
+
+### 1. Competition data (not committed)
+
+The engine and card data are competition-use-only and must stay out of git.
+Download the competition data after accepting the rules:
 
 ```bash
-git clone https://github.com/arifs122/TransforMew.git
-cd TransforMew
-bash scripts/setup_assets.sh /path/to/sample_submission/cg
-python3 scripts/check_env.py
+# Kaggle CLI: https://github.com/Kaggle/kaggle-cli
+kaggle competitions download \
+  -c the-pokemon-company-ptcg-ai-battle-challenge-playground \
+  -p data/raw
+unzip data/raw/the-pokemon-company-ptcg-ai-battle-challenge-playground.zip -d data/raw
 ```
 
-Yarışma motoru ve kart verisi lisans nedeniyle repoda tutulmaz. Script, verilen
-`cg/` klasörünü `vendor/cg` altına, kart CSV'lerini `data/` altına kopyalar.
-
-## Kullanım
+The archive contains the sample submission (`cg/`) and the card CSVs. Copy the
+engine and card data into the git-ignored folders:
 
 ```bash
-# yerel maç
-python3 tools/arena.py --games 100
-
-# gözlem inceleme
-python3 tools/inspect_obs.py --steps 20
-
-# submission paketi
-python3 tools/build_submission.py
+bash scripts/setup_assets.sh /path/to/sample_submission/cg /path/to/card/csvs
+python scripts/check_env.py
 ```
 
-Submission çıktısı `submissions/submission.tar.gz` olur; kökte `main.py`,
-`deck.csv` ve `cg/` bulunur.
+`scripts/setup_assets.sh` copies the engine to `vendor/cg/` and the card CSVs
+to `data/`. The local arena needs `vendor/cg/`; the notebooks need
+`data/EN_Card_Data_R2_full.csv`.
 
-## Botlar
+### 2. Replay data (not committed)
 
-Her bot `bots/<bot_adi>/` altında kendi `main.py` ve `deck.csv` dosyasıyla
-durur. Şablon:
+Place the episode replay JSON files under `replays/`. Replays can be downloaded
+from the Kaggle episode/submission pages and from the agent logs. The folder is
+git-ignored because it is competition data and can be tens of GB.
+
+Build the compact analysis table used by the notebook:
 
 ```bash
-cp -r bots/_template bots/benim_botum
-# main.py, deck.csv ve meta.json düzenle
+python tools/build_master_replays.py --out-dir data
+python tools/build_analysis_dataset.py
 ```
+
+This writes `data/master_replays.csv` and `data/analysis_matches.csv` (both
+ignored). `build_analysis_dataset.py` also extracts the first player from the
+beginning of each replay and adds deck-composition features.
+
+### 3. Python environment
 
 ```bash
-# iki botu karşılaştır
-python3 tools/arena.py --bot0 bots/benim_botum --bot1 bots/_template --games 50
-
-# BO3
-python3 tools/arena.py --bot0 bots/benim_botum --bot1 bots/_template --games 30 --bo3
-
-# tüm botlarla round-robin turnuva
-python3 tools/tournament.py --games 50
-
-# seçilen botu paketle
-python3 tools/build_submission.py --bot bots/benim_botum
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Ayrıntılar ve kurallar: [`bots/README.md`](bots/README.md)
+`requirements.txt` contains the analysis stack (`numpy`, `pandas`,
+`scikit-learn`, `matplotlib`, `jupyter`, `nbconvert`). The Kaggle submission
+bundle uses only NumPy inference; training dependencies are listed separately in
+`requirements-train.txt`.
 
-### Belief / gözlem logları
+### 4. Run the notebooks
 
-`bots/dragapult` submission sırasında **sadece gözlem** amaçlı, tur başına bir
-`BELIEF {...}` JSON satırı basar. Bu satır politikanın seçtiği aksiyonu
-değiştirmez; Kaggle agent log’larından indirilip analiz edilir.
+The committed notebook already contains its outputs. To reproduce them:
 
 ```bash
-# local testlerde logları kapat
-PTCG_BELIEF_LOG=0 python3 tools/arena.py --bot0 bots/dragapult --bot1 bots/_template --games 30
-
-# logları özetle
-python3 tools/belief_logs.py logs/episode-*-agent-*-logs.json
-
-# replay'lardan yeni deck eklendiyse runtime kütüphanesini yenile
-python3 tools/build_belief_data.py
+jupyter nbconvert --to notebook --execute assignment1_eda_baseline.ipynb --inplace
 ```
 
-Log alanları: rakip archetype posterior’u, Boss/Judge/Lillie/Unfair el
-olasılıkları; kendi setup/enerji/Boss draw olasılıkları; phase ve el/deck/prize
-sayıları.
+or open it with JupyterLab and **Restart & Run All**.
 
-### İlk bot: Banette
+## Kaggle submission
 
-`bots/banette/` ilk yarışma botumuz:
-
-- Banette + 2 Kieran + 2 Bloodmoon Ursaluna ex + Neutralization Zone
-- Consensus Banette listesinden `-1 Prism Tower`, `-1 Pokégear 3.0`, `-1 Legacy Energy`
-- Patrat korundu; 60 kart, 1 ACE SPEC (Neutralization Zone)
-- Kendi `main.py` politikası: Gwynn discard yönetimi, Dhelmise/Banette/
-  Bloodmoon saldırı seçimi, Boss hedefleme
-
-Meta deck listeleri ve 188 replay'lik analiz: [`decks/meta/README.md`](decks/meta/README.md)
-
-Matchup notları ve 3 deck planı: [`decks/meta/matchups.md`](decks/meta/matchups.md)
+The submission bundle is a `.tar.gz` with `main.py`, `deck.csv` and `cg/` at the
+top level. To build and submit a bot:
 
 ```bash
-python3 tools/check_deck.py bots/banette/deck.csv --engine
-python3 tools/build_submission.py --bot bots/banette
+python tools/build_submission.py --bot bots/<bot_name>
+kaggle competitions submit \
+  -c the-pokemon-company-ptcg-ai-battle-challenge-playground \
+  -f submissions/<bot_name>.tar.gz \
+  -m "description"
 ```
 
-## Yapı
+The competition allows 5 submissions per day and keeps the latest 2 active.
+The Assignment 1 baseline is the rule policy in `src/agent/`; the current best
+is the PPO agent `kassadin`.
 
+## Original TransforMew development
+
+The repository started as **TransforMew**, a full agent-development project. It
+contains:
+
+| Path | Purpose |
+|---|---|
+| `src/agent/` | baseline observation → action policy |
+| `src/mazlum/` | behavioural-cloning / value-model training code |
+| `bots/` | team bots, each with `main.py` + `deck.csv` |
+| `decks/` | shared deck lists and meta-deck analyses |
+| `tools/` | arena, tournaments, replay parsing, deck checks, submission builder |
+| `benchmarks/` | reference agents and meta decks |
+| `scripts/` | environment and asset setup |
+| `tests/` | smoke tests |
+
+Useful commands:
+
+```bash
+python tools/arena.py --games 100
+python tools/arena.py --bot0 bots/<a> --bot1 bots/<b> --games 50 --bo3
+python tools/tournament.py --games 50
+python tools/check_deck.py bots/<bot>/deck.csv --engine
 ```
-src/agent/       varsayılan ajan ve politika
-bots/            ekip botları (her biri main.py + deck.csv)
-decks/           ortak deste dosyaları ve meta listeleri
-tools/           arena, turnuva, replay analizi, deck kontrolü, paketleme
-scripts/         kurulum ve kontrol
-tests/           smoke test
-```
 
-## Lisans
+## Assignment 2 plan
 
-Bu repodaki özgün kod MIT lisansı ile dağıtılır (bkz. `LICENSE`).
-Pokémon kartları, `cabt` motoru ve yarışma verisi bu lisansın kapsamı dışındadır;
-Kaggle yarışma kurallarına tabidir ve repoda yer almaz.
+The placeholder notebook is
+[`assignment2_solution.ipynb`](assignment2_solution.ipynb). Planned work:
+
+1. Board-state feature extraction from replay decisions.
+2. Compare the calibrated matchup model with a board-state value model.
+3. Behaviour cloning, then PPO fine-tuning against a league.
+4. Matchup-aware deck choice instead of one fixed list.
+5. BO3 arena evaluation with bootstrap intervals and a final Kaggle submission.
+
+## Academic integrity
+
+* All notebook cells and `src/` code in this repository were written by the
+  group. We did not copy Kaggle notebooks or cells.
+* Public notebooks/discussions were read for ideas only; any adapted idea will
+  be cited in a markdown cell with a link.
+* Competition data (`data/`, `replays/`, engine) is not committed.
+* Every member can explain the cells they contributed and has meaningful
+  commits in the repository.
+
+## License
+
+The original code in this repository is released under the MIT License (see
+`LICENSE`). Pokémon cards, the `cabt` engine and the competition data are not
+covered by that license; they remain subject to the Kaggle competition rules
+and are not redistributed here.

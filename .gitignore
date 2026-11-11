@@ -53,6 +53,12 @@ _arena_candidate.npz
 # --- Submission bundles: only the Mazlum package ships ---
 submissions/*
 !submissions/mazlum.tar.gz
+!submissions/README.md
+!submissions/kaggle_submissions.csv
+!submissions/kaggle_submissions.png
+
+# --- Large archives / local scratch data (never commit) ---
+*.zip
 
 # --- Model weights / large generated artifacts (never commit) ---
 *.pt

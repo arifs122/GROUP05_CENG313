@@ -1,0 +1,9 @@
+ref,fileName,date,description,status,publicScore
+58161343,kassadin.tar.gz,2026-11-09,PPO agent — current best (team score 1035.4),COMPLETE,1035.4
+58124604,cassiopeia.tar.gz,2026-11-08,PPO agent — second active submission,COMPLETE,905.4
+58097253,shaco.tar.gz,2026-11-07,PPO agent,COMPLETE,890.1
+58003380,zipzop_baseline.tar.gz,2026-11-05,Rule-based Top2 policy — baseline,COMPLETE,556.6
+57961261,tokatci_lean4_noai.tar.gz,2026-11-03,Lean4 rule pilot (search disabled),COMPLETE,611.5
+57480826,lucario.tar.gz,2026-10-21,Mega Lucario rule policy,COMPLETE,519.7
+57479759,dragapult.tar.gz,2026-10-21,Baseline rule policy (src/agent) — first working agent,COMPLETE,521.1
+57499245,sample_submission.tar.gz,2026-10-21,Sample validation control (sanity check),COMPLETE,89.5
