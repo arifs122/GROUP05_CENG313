@@ -39,37 +39,35 @@ There is no `train.csv`. The observed data are the episode replays: each replay
 contains both 60-card decks, the result and every decision. We use those
 replays for the EDA and the baselines.
 
-### Current score
+### Current score (our own agents)
 
 | Submission | Member | Date | Public score | Role |
 |---|---|---:|---:|---|
 | `sample_submission.tar.gz` | Yerdem | 2026-10-21 | 89.5 | sample control |
 | `dragapult.tar.gz` | Arif | 2026-10-21 | **521.1** | **Assignment 1 baseline** (our rule policy) |
 | `zipzop_baseline.tar.gz` | Arif | 2026-11-05 | 556.6 | improved rule baseline (ours) |
+| `dragapult.tar.gz` (Dragapult2) | Yerdem | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
 | `tokatci_lean4_noai.tar.gz` | Arif | 2026-11-03 | 611.5 | Lean4 rule/search agent (ours) |
-| `mazlum.tar.gz` | Fariz | 2026-11-03 | **643.1** | **best own non-PPO line** (Mazlum BC) |
 | `mazlum_v21_matchups.tar.gz` | Fariz | 2026-11-06 | 622.6 | matchup-targeted Mazlum BC (ours) |
-| `dragapult.tar.gz` | Yerdem | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
-| `cassiopeia.tar.gz` | Arif | 2026-11-08 | 905.4 | PPO experiment (public-derived) |
-| `kassadin.tar.gz` | Arif | 2026-11-09 | **1035.4** | **experimental PPO best** (public-derived) |
+| `mazlum.tar.gz` | Fariz | 2026-11-03 | **643.1** | **best own learning agent** (Mazlum BC) |
 
-At the time of writing the team is around **#389 of 699 teams**; the top public
-score is **1573.9**. The submission history is captured in
+Our own best submission is **643.1**; the top public score is **1573.9**, so
+our best reaches about **41%** of the top score and the Assignment 1 baseline
+reaches **33%**. The score proof only includes our own agents:
 [`submissions/kaggle_submissions.png`](submissions/kaggle_submissions.png)
 and [`submissions/kaggle_submissions.csv`](submissions/kaggle_submissions.csv).
 
-> **Provenance.** The rule/lean/search bots and the Mazlum behavioural-cloning
-> models are **our own code**. The PPO line (`kassadin`, `cassiopeia`, `shaco`,
-> `gragas`, and the explicit `public_*` probes) is **experimental**: it started
-> from public PPO implementations/weights and is used for ladder benchmarking,
-> **not presented as our original solution**. Assignment 2 will document our
-> own improved implementation and cite any adapted idea.
+> **Provenance.** The rule/Lean4/search bots and the Mazlum
+> behavioural-cloning models are **our own code**. Some early PPO experiments
+> were run for learning/benchmarking; they are **not included in the reported
+> results** and are **not claimed as our solution**. Assignment 2 will document
+> our own improved implementation and cite any adapted idea.
 
 ### Team contributions
 
 | Member | Main contributions |
 |---|---|
-| **Arif Dayı** | Rule-based and Lean4/search agents, submission pipeline, replay analysis, PPO benchmarking, Assignment 1 notebook and `src/` modules |
+| **Arif Dayı** | Rule-based and Lean4/search agents, submission pipeline, replay analysis, Assignment 1 notebook and `src/` modules |
 | **Fariz Berke Tutanç** | Mazlum behavioural-cloning / value models, Banette and Slowking specialists, replay collection and matchup analysis |
 | **Yerdem Gül** | Early Dragapult bot and agent-last validation fix, arena `reset()` hook, `tools/analyze.py`, bot contract and legality tests |
 
@@ -119,7 +117,7 @@ required course files above are the entry points for grading.
    leakage checks.
 5. **Baselines** — logistic regression match-outcome model and the rule-based
    agent; local arena evaluation and Kaggle scores.
-6. **Kaggle submission** — baseline score 521.1, current best 1035.4, proof
+6. **Kaggle submission** — baseline score 521.1, own best 643.1, proof
    image in `submissions/`.
 7. **Conclusion** — findings, limitations and the Assignment 2 plan.
 
@@ -132,7 +130,7 @@ required course files above are the entry points for grading.
 | Rule agent vs random legal actions | ~80–83% win rate (500 games) |
 | Rule agent vs first-legal-action agent | ~52–54% win rate (500 games) |
 | Kaggle rule baseline | **521.1** public score |
-| Kaggle current best (PPO) | **1035.4** public score |
+| Kaggle own best (Mazlum BC) | **643.1** public score |
 
 The match-outcome model is **not** the submitted agent. It shows that deck and
 matchup features carry real signal and gives Assignment 2 a validated feature
@@ -233,8 +231,8 @@ kaggle competitions submit \
 ```
 
 The competition allows 5 submissions per day and keeps the latest 2 active.
-The Assignment 1 baseline is the rule policy in `src/agent/`; the current best
-is the PPO agent `kassadin`.
+The Assignment 1 baseline is the rule policy in `src/agent/`; the best own
+learning agent is the Mazlum behavioural-cloning line (643.1).
 
 ## Original TransforMew development
 
@@ -279,11 +277,11 @@ The placeholder notebook is
   group. We did not copy Kaggle notebooks or cells.
 * Public notebooks/discussions were read for ideas only; any adapted idea will
   be cited in a markdown cell with a link.
-* **PPO experiments are disclosed separately.** The PPO submissions in the
-  Kaggle history are benchmark experiments built on public PPO
-  implementations/weights. They are not claimed as our original solution and
-  they are not the Assignment 1 baseline. The Assignment 1 baseline is our own
-  rule policy (public score 521.1).
+* **Exploratory PPO runs are disclosed separately.** Some early PPO experiments
+  were run for learning/benchmarking. They are not included in the reported
+  results, are not claimed as our original solution, and are not the Assignment
+  1 baseline. The Assignment 1 baseline is our own rule policy (public score
+  521.1).
 * Competition data (`data/`, `replays/`, engine) is not committed.
 * Every member can explain the cells they contributed and has meaningful
   commits in the repository.

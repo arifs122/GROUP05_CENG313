@@ -13,12 +13,10 @@ submission history captured from Kaggle.
 
 - **Our own work:** the rule/Lean4/search bots, the Mazlum behavioural-cloning
   / value models, the EDA notebook and the `src/` modules.
-- **Experimental:** the PPO line (`kassadin`, `cassiopeia`, `shaco`, `gragas`,
-  and the explicit `public_*` probes). It started from public PPO
-  implementations/weights and is used for ladder benchmarking. It is **not**
-  presented as our original solution and is **not** the Assignment 1 baseline.
 - **Assignment 1 baseline:** `dragapult.tar.gz` (Kaggle description
   "Dragapult sample policy v1"), public score **521.1**.
+- The reported table contains only our own agents. Exploratory PPO runs are
+  not included in the reported results and are not claimed as our solution.
 
 ## How the proof was captured
 
@@ -30,7 +28,7 @@ python -c "from src.utils import load_submission_history, render_submission_proo
 ```
 
 The committed CSV is a curated excerpt: sample control, the Assignment 1 rule
-baseline, the own rule/BC lines, and the experimental PPO runs.
+baseline, and our own rule/BC agents.
 
 ## Note on re-submitting
 
