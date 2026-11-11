@@ -120,13 +120,14 @@ def parse_deck(value: object) -> list[int]:
 
 
 def first_player_from_replay(path: str | Path) -> int | None:
-    """Read the first player from the beginning of a replay file.
+    """Read the first game's first player from the beginning of a replay.
 
     ``firstPlayer`` is written repeatedly in the observation state.  The
     initial value is ``-1`` while the setup decisions are still running, so we
-    return the last non-negative value found in the first 2 MiB.  This is
-    enough for every replay in our corpus and avoids loading multi-megabyte
-    JSON files into memory.
+    return the **first** non-negative value found in the first 2 MiB.  In a
+    BO3 replay later rounds can choose a different first player, so taking the
+    last value would mix rounds and label some matches with the wrong player.
+    The 2 MiB cap avoids loading multi-megabyte JSON files into memory.
     """
     path = Path(path)
     try:
@@ -136,7 +137,7 @@ def first_player_from_replay(path: str | Path) -> int | None:
         return None
     values = [int(x) for x in FIRST_PLAYER_RE.findall(text)]
     values = [value for value in values if value >= 0]
-    return values[-1] if values else None
+    return values[0] if values else None
 
 
 def _resolve_replay_path(value: str | Path) -> Path | None:

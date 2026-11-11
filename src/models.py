@@ -8,6 +8,9 @@ series).  For the tabular baseline we therefore model
 from historical episodes.  Both player perspectives are used, and the
 train/test split is grouped by episode so a match cannot leak across folds.
 
+This is an **oracle match-outcome analysis**, not a deployable pre-match
+predictor: the opponent deck list and the first/second choice are assumed
+known.  The notebook labels it accordingly and runs a matchup-only ablation.
 The second baseline is the rule-based agent in ``src/agent/policy.py``.  It is
 evaluated separately with the local arena because an agent's score is a win
 rate, not a row-level prediction metric.
@@ -58,17 +61,16 @@ def feature_columns(frame: pd.DataFrame, key_card_features: list[str] | None = N
 
 def make_preprocessor(categorical: list[str], numeric: list[str]) -> ColumnTransformer:
     """One-hot encode deck/matchup labels and scale the numeric block."""
-    return ColumnTransformer(
-        transformers=[
-            (
-                "categorical",
-                OneHotEncoder(handle_unknown="ignore", min_frequency=10),
-                categorical,
-            ),
-            ("numeric", StandardScaler(), numeric),
-        ],
-        remainder="drop",
-    )
+    transformers = [
+        (
+            "categorical",
+            OneHotEncoder(handle_unknown="ignore", min_frequency=10),
+            categorical,
+        )
+    ]
+    if numeric:
+        transformers.append(("numeric", StandardScaler(), numeric))
+    return ColumnTransformer(transformers=transformers, remainder="drop")
 
 
 def build_logistic(
@@ -102,6 +104,35 @@ def build_dummy(frame: pd.DataFrame) -> Pipeline:
             ("model", DummyClassifier(strategy="prior")),
         ]
     )
+
+
+MATCHUP_FEATURES = ["own_arch", "opp_arch", "matchup"]
+
+
+def build_matchup_only(frame: pd.DataFrame) -> Pipeline:
+    """Categorical-only model used to isolate the matchup signal."""
+    categorical = [column for column in MATCHUP_FEATURES if column in frame]
+    return Pipeline(
+        [
+            ("preprocess", make_preprocessor(categorical, [])),
+            (
+                "model",
+                LogisticRegression(
+                    C=1.0,
+                    max_iter=2000,
+                    class_weight="balanced",
+                    random_state=42,
+                ),
+            ),
+        ]
+    )
+
+
+def fit_matchup_only(train: pd.DataFrame, test: pd.DataFrame) -> Evaluation:
+    """Fit and evaluate the own/opponent/matchup-only ablation."""
+    model = build_matchup_only(train)
+    model.fit(train, train["win"])
+    return evaluate_model(model, test, "Matchup only")
 
 
 def predict_probability(model: Pipeline, frame: pd.DataFrame) -> np.ndarray:
