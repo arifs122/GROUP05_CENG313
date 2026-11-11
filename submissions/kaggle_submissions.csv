@@ -2,7 +2,7 @@ ref,member,fileName,date,description,status,publicScore
 57957138,Fariz,mazlum.tar.gz,2026-11-03,"Mazlum behavioural-cloning agent — our own model",COMPLETE,643.1
 58055944,Fariz,mazlum_v21_matchups.tar.gz,2026-11-06,"Mazlum BC v21 — matchup-targeted, our own model",COMPLETE,622.6
 57961261,Arif,tokatci_lean4_noai.tar.gz,2026-11-03,"Lean4 rule pilot (search disabled) — our own agent",COMPLETE,611.5
-57499505,Yunus,dragapult.tar.gz,2026-10-21,"Dragapult2 agent-last fix — early own rule bot",COMPLETE,595.1
+57499505,Yunus Erdem Ergül,dragapult.tar.gz,2026-10-21,"Dragapult2 agent-last fix — early own rule bot",COMPLETE,595.1
 58003380,Arif,zipzop_baseline.tar.gz,2026-11-05,"Rule-based Top2 policy — our own baseline",COMPLETE,556.6
 57479759,Arif,dragapult.tar.gz,2026-10-21,"Dragapult sample policy v1 — Assignment 1 baseline",COMPLETE,521.1
-57499245,Yunus,sample_submission.tar.gz,2026-10-21,"Sample validation control (sanity check)",COMPLETE,89.5
+57499245,Yunus Erdem Ergül,sample_submission.tar.gz,2026-10-21,"Sample validation control (sanity check)",COMPLETE,89.5

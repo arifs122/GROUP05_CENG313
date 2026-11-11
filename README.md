@@ -21,7 +21,7 @@ EDA/baseline notebook.
 |---|---|---|
 | Arif Dayı | [@arifs122](https://github.com/arifs122) | 24118080010 |
 | Fariz Berke Tutanç | [@Farhandir](https://github.com/Farhandir) | 24118080063 |
-| Yunus | [@qewer33](https://github.com/qewer33) | 24118080078 |
+| Yunus Erdem Ergül | [@qewer33](https://github.com/qewer33) | 24118080078 |
 
 > Student IDs are filled in by the group before the final submission. Every
 > member has commits in this repository; see **Insights → Contributors**.
@@ -43,10 +43,10 @@ replays for the EDA and the baselines.
 
 | Submission | Member | Date | Public score | Role |
 |---|---|---:|---:|---|
-| `sample_submission.tar.gz` | Yunus | 2026-10-21 | 89.5 | sample control |
+| `sample_submission.tar.gz` | Yunus Erdem Ergül | 2026-10-21 | 89.5 | sample control |
 | `dragapult.tar.gz` | Arif | 2026-10-21 | **521.1** | **Assignment 1 baseline** (our rule policy) |
 | `zipzop_baseline.tar.gz` | Arif | 2026-11-05 | 556.6 | improved rule baseline (ours) |
-| `dragapult.tar.gz` (Dragapult2) | Yunus | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
+| `dragapult.tar.gz` (Dragapult2) | Yunus Erdem Ergül | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
 | `tokatci_lean4_noai.tar.gz` | Arif | 2026-11-03 | 611.5 | Lean4 rule/search agent (ours) |
 | `mazlum_v21_matchups.tar.gz` | Fariz | 2026-11-06 | 622.6 | matchup-targeted Mazlum BC (ours) |
 | `mazlum.tar.gz` | Fariz | 2026-11-03 | **643.1** | **best own learning agent** (Mazlum BC) |

@@ -288,7 +288,7 @@ def render_submission_proof(
         colLabels=["ref", "member", "file", "date", "description", "status", "public"],
         cellLoc="left",
         colLoc="left",
-        colWidths=[0.075, 0.075, 0.17, 0.08, 0.39, 0.09, 0.07],
+        colWidths=[0.07, 0.12, 0.16, 0.075, 0.36, 0.085, 0.06],
         loc="upper left",
     )
     table.auto_set_font_size(False)
