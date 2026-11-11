@@ -19,9 +19,9 @@ EDA/baseline notebook.
 
 | Member | GitHub | Student ID |
 |---|---|---|
-| Arif Dayı | [@arifs122](https://github.com/arifs122) | TODO |
-| Fariz Berke Tutanç | [@Farhandir](https://github.com/Farhandir) | TODO |
-| Yerdem Gül | [@qewer33](https://github.com/qewer33) | TODO |
+| Arif Dayı | [@arifs122](https://github.com/arifs122) | 24118080010 |
+| Fariz Berke Tutanç | [@Farhandir](https://github.com/Farhandir) | 24118080063 |
+| Yerdem Gül | [@qewer33](https://github.com/qewer33) | 24118080078 |
 
 > Student IDs are filled in by the group before the final submission. Every
 > member has commits in this repository; see **Insights → Contributors**.
