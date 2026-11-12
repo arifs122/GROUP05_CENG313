@@ -40,15 +40,19 @@ replays for the EDA and the baselines.
 
 ### Current score (our own agents)
 
-| Submission | Member | Date | Public score | Role |
-|---|---|---:|---:|---|
-| `sample_submission.tar.gz` | Yunus | 2026-10-21 | 89.5 | sample control |
-| `dragapult.tar.gz` | Arif | 2026-10-21 | **521.1** | **Assignment 1 baseline** (our rule policy) |
-| `zipzop_baseline.tar.gz` | Arif | 2026-11-05 | 556.6 | improved rule baseline (ours) |
-| `dragapult.tar.gz` (Dragapult2) | Yunus | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
-| `tokatci_lean4_noai.tar.gz` | Arif | 2026-11-03 | 611.5 | Lean4 rule/search agent (ours) |
-| `mazlum_v21_matchups.tar.gz` | Fariz | 2026-11-06 | 622.6 | matchup-targeted Mazlum BC (ours) |
-| `mazlum.tar.gz` | Fariz | 2026-11-03 | **643.1** | **best own learning agent** (Mazlum BC) |
+| Submission | Deck | Member | Date | Public score | Role |
+|---|---|---:|---:|---:|---|
+| `sample_submission.tar.gz` | Mega Abomasnow | Yunus | 2026-10-21 | 89.5 | sample control |
+| `dragapult.tar.gz` | Dragapult | Arif | 2026-10-21 | **521.1** | **Assignment 1 baseline** (our rule policy) |
+| `zipzop_baseline.tar.gz` | Dragapult / Munkidori | Arif | 2026-11-05 | 556.6 | improved rule baseline (ours) |
+| `dragapult.tar.gz` (Dragapult2) | Dragapult | Yunus | 2026-10-21 | 595.1 | early Dragapult rule bot (ours) |
+| `tokatci_lean4_noai.tar.gz` | Dragapult | Arif | 2026-11-03 | 611.5 | Lean4 rule/search agent (ours) |
+| `mazlum_v21_matchups.tar.gz` | Banette | Fariz | 2026-11-06 | 622.6 | matchup-targeted Mazlum BC (ours) |
+| `mazlum.tar.gz` | Banette | Fariz | 2026-11-03 | **643.1** | **best own learning agent** (Mazlum BC) |
+
+Deck labels are the main attacker archetype; `Dragapult / Munkidori` is the
+Munkidori variant of the Dragapult list, and the sample control uses the
+competition's Mega Abomasnow sample deck.
 
 Our own best submission is **643.1**; the top public score is **1573.9**, so
 our best reaches about **41%** of the top score and the Assignment 1 baseline
